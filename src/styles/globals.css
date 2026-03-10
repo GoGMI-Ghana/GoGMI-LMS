@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  /* GoGMI Brand Colors */
+  --color-brand-navy: #0B1F3F;
+  --color-brand-navy-light: #132D5E;
+  --color-brand-navy-muted: #1E3A6E;
+  --color-brand-teal: #0E7C86;
+  --color-brand-teal-light: #E8F6F7;
+  --color-brand-amber: #D4920B;
+  --color-brand-amber-light: #FEF7E6;
+}
+
+@layer base {
+  body {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
