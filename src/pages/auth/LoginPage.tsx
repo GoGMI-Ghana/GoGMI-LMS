@@ -58,7 +58,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   GoGMI
                 </div>
                 <div className="text-white/60 text-[11px] tracking-wide">
-                  Learning Platform
+                  Learning Management System
                 </div>
               </div>
             </div>
@@ -214,7 +214,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </div>
 
           <p className="text-center text-[13px] text-gray-400 mt-8">
-            Don't have login credentials? Contact your administrator.
+            Don't have login credentials? Contact the administrator.
           </p>
         </div>
       </div>
