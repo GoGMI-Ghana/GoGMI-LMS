@@ -217,7 +217,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             Don't have login credentials? Contact the administrator.
           </p>
            <p className="text-center text-[13px] text-gray-400 mt-8">
-            email:info@gogmi.org.gh
+            email : info@gogmi.org.gh
           </p>
         </div>
       </div>
