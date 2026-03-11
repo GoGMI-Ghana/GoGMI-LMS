@@ -100,7 +100,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             />
             <div>
               <div className="text-gray-800 text-[16px] font-semibold">GoGMI</div>
-              <div className="text-gray-400 text-[11px]">Learning Platform</div>
+              <div className="text-gray-400 text-[11px]">Learning Management System</div>
             </div>
           </div>
 
@@ -113,15 +113,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             />
             <div>
               <div className="text-gray-800 text-[16px] font-semibold">GoGMI</div>
-              <div className="text-gray-400 text-[11px]">Learning Platform</div>
+              <div className="text-gray-400 text-[11px]">Learning Management System</div>
             </div>
           </div>
 
           <h2 className="text-[22px] font-semibold text-gray-800 mb-1">
-            Welcome back
+            Welcome 
           </h2>
           <p className="text-[14px] text-gray-500 mb-8">
-            Sign in with your credentials to access your courses.
+            Sign in with your credentials to access the courses.
           </p>
 
           {error && (
