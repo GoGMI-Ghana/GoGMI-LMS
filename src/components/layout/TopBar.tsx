@@ -1,10 +1,10 @@
-import type { User } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 
-interface TopBarProps {
-  user: User;
-}
+export default function TopBar() {
+  const { user } = useAuth();
 
-export default function TopBar({ user }: TopBarProps) {
+  if (!user) return null;
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 z-40">
       {/* Search */}
