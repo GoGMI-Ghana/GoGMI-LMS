@@ -47,7 +47,7 @@ function SidebarLink({ item }: { item: NavItem }) {
 }
 
 export default function Sidebar() {
-  const { logout, hasRole } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-brand-navy flex flex-col z-50">
@@ -69,7 +69,7 @@ export default function Sidebar() {
         <div className="flex-1" />
 
         <div className="border-t border-brand-navy-light pt-3 mt-2 flex flex-col gap-0.5">
-          {hasRole("admin") && (
+          {user?.role === "ADMIN" && (
             <NavLink
               to="/admin"
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-brand-teal hover:bg-brand-navy-light transition-colors duration-150"

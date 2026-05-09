@@ -10,8 +10,8 @@ import { AppLayout } from "../components/layout";
 import { AdminLayout } from "../components/admin";
 import { ProtectedRoute, LoadingSpinner } from "../components/common";
 
-// Lazy-loaded student pages
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
 const DashboardPage = lazy(() => import("../pages/student/DashboardPage"));
 const MyCoursesPage = lazy(() => import("../pages/student/MyCoursesPage"));
 const CatalogPage = lazy(() => import("../pages/student/CatalogPage"));
@@ -23,8 +23,6 @@ const DiscussionsPage = lazy(() => import("../pages/student/DiscussionsPage"));
 const MessagesPage = lazy(() => import("../pages/student/MessagesPage"));
 const SettingsPage = lazy(() => import("../pages/student/SettingsPage"));
 const HelpPage = lazy(() => import("../pages/student/HelpPage"));
-
-// Lazy-loaded admin pages
 const AdminOverviewPage = lazy(() => import("../pages/admin/AdminOverviewPage"));
 const AdminUsersPage = lazy(() => import("../pages/admin/AdminUsersPage"));
 const AdminCoursesPage = lazy(() => import("../pages/admin/AdminCoursesPage"));
@@ -51,10 +49,11 @@ const routes: RouteObject[] = [
     children: [
       // Public
       { path: "/login", element: <Lazy><LoginPage /></Lazy> },
+      { path: "/register", element: <Lazy><RegisterPage /></Lazy> },
 
-      // Student routes (accessible by students and admins)
+      // Student + Admin
       {
-        element: <ProtectedRoute allowedRoles={["student", "admin"]} />,
+        element: <ProtectedRoute allowedRoles={["STUDENT", "ADMIN"]} />,
         children: [
           {
             element: <AppLayout />,
@@ -76,9 +75,9 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Admin routes
+      // Admin
       {
-        element: <ProtectedRoute allowedRoles={["admin"]} />,
+        element: <ProtectedRoute allowedRoles={["ADMIN"]} />,
         children: [
           {
             path: "admin",
@@ -96,7 +95,6 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Catch-all
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },

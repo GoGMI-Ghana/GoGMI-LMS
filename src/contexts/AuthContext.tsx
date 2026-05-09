@@ -4,13 +4,28 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
   type ReactNode,
 } from "react";
-import type { User, UserRole } from "../types";
+import type { UserRole } from "../types";
+import { api, setAccessToken } from "../services/api";
+
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  initials: string;
+  organization?: string;
+  jobTitle?: string;
+  country?: string;
+}
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hasRole: (role: UserRole) => boolean;
@@ -18,57 +33,62 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const STORAGE_KEY = "gogmi_auth";
+const USER_STORAGE_KEY = "gogmi_user";
 
-function getPersistedAuth(): User | null {
+function getStoredUser(): AuthUser | null {
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    const stored = sessionStorage.getItem(USER_STORAGE_KEY);
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
 }
 
-function persistAuth(user: User | null) {
-  if (user) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  } else {
-    sessionStorage.removeItem(STORAGE_KEY);
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(getPersistedAuth);
+  const [user, setUser] = useState<AuthUser | null>(getStoredUser);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const login = useCallback(async (email: string, _password: string) => {
-    // TODO: Replace with real API call → POST /api/auth/login
-    // The backend determines the role, not the frontend.
-    // For now, we simulate: admin emails get admin role, others get student.
-    await new Promise((r) => setTimeout(r, 1000));
-
-    const isAdmin = email.toLowerCase().includes("admin");
-    const role: UserRole = isAdmin ? "admin" : "student";
-
-    const mockUser: User = {
-      id: isAdmin ? "usr_admin" : "usr_001",
-      firstName: isAdmin ? "Lawrence" : "Kwame",
-      lastName: isAdmin ? "Dogli" : "Asante",
-      email,
-      role,
-      initials: isAdmin ? "LD" : "KA",
-      cpdPoints: 24,
-      cpdTarget: 40,
-      enrolledCount: 2,
-      completedCount: 1,
-    };
-
-    persistAuth(mockUser);
-    setUser(mockUser);
+  // On mount, try to refresh the token if we have a stored user
+  useEffect(() => {
+    if (user) {
+      api.post<{ accessToken: string }>("/auth/refresh")
+        .then((data) => {
+          setAccessToken(data.accessToken);
+        })
+        .catch(() => {
+          // Refresh failed — session expired
+          setUser(null);
+          setAccessToken(null);
+          sessionStorage.removeItem(USER_STORAGE_KEY);
+        });
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    persistAuth(null);
+  const login = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const data = await api.post<{ user: AuthUser; accessToken: string }>(
+        "/auth/login",
+        { email, password }
+      );
+
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Logout API failed — clear local state anyway
+    }
+    setAccessToken(null);
     setUser(null);
+    sessionStorage.removeItem(USER_STORAGE_KEY);
   }, []);
 
   const hasRole = useCallback(
@@ -80,11 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isAuthenticated: !!user,
+      isLoading,
       login,
       logout,
       hasRole,
     }),
-    [user, login, logout, hasRole]
+    [user, isLoading, login, logout, hasRole]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

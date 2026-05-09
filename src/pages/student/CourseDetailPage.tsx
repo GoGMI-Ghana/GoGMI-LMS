@@ -1,15 +1,44 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ProgressBar } from "../../components/common";
-import { catalogCourses, enrolledCourses } from "../../data/mock";
+import { useApi } from "../../hooks/useApi";
+import { ProgressBar, LoadingSpinner } from "../../components/common";
+
+interface Course {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  category: string;
+  level: string;
+  duration: string;
+  thumbnailCode: string;
+  thumbnailColor: string;
+  price: number;
+  currency: string;
+  featured: boolean;
+  format: string;
+  targetGroup: string;
+  students: number;
+  tags: string[];
+  facilitators: { name: string; title: string }[];
+  outcomes: string[];
+  modules: { id: string; title: string; order: number; lessons: { id: string; title: string; facilitator: string; duration: string }[] }[];
+}
+
+interface AccessCheck {
+  hasAccess: boolean;
+  enrollment: { progress: number; status: string } | null;
+}
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
-  const course = catalogCourses.find(c => c.id === courseId);
-  const enrolled = enrolledCourses.find(c => c.id === courseId);
+  const { data: course, isLoading } = useApi<Course>("/courses/" + courseId);
+  const { data: access } = useApi<AccessCheck>("/courses/" + courseId + "/access");
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "syllabus" | "facilitators">("overview");
+
+  if (isLoading) return <LoadingSpinner />;
 
   if (!course) {
     return (
@@ -20,7 +49,7 @@ export default function CourseDetailPage() {
     );
   }
 
-  const totalLessons = course.syllabus.reduce((sum, m) => sum + m.lessons.length, 0);
+  const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
 
   return (
     <div>
@@ -31,6 +60,7 @@ export default function CourseDetailPage() {
 
       <div className="grid grid-cols-[1fr_360px] gap-6">
         <div className="flex flex-col gap-5">
+          {/* Hero */}
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}>
               <span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span>
@@ -46,26 +76,14 @@ export default function CourseDetailPage() {
               <p className="text-[13px] text-gray-400 italic mb-4">{course.subtitle}</p>
               <div className="flex items-center gap-4 text-[13px] text-gray-500 flex-wrap">
                 <span>{course.duration}</span>
-                {course.modules > 0 && <><span className="text-gray-300">·</span><span>{course.modules} modules</span></>}
+                {course.modules.length > 0 && <><span className="text-gray-300">·</span><span>{course.modules.length} modules</span></>}
                 {totalLessons > 0 && <><span className="text-gray-300">·</span><span>{totalLessons} sessions</span></>}
                 {course.students > 0 && <><span className="text-gray-300">·</span><span>{course.students} enrolled</span></>}
               </div>
-              {course.rating > 0 && (
-                <div className="flex items-center gap-2 mt-3">
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <svg key={star} width="14" height="14" viewBox="0 0 24 24" fill={star <= Math.floor(course.rating) ? "#D4920B" : "none"} stroke="#D4920B" strokeWidth="2">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-[13px] font-medium text-gray-700">{course.rating}</span>
-                  <span className="text-[12px] text-gray-400">({course.reviews} reviews)</span>
-                </div>
-              )}
             </div>
           </div>
 
+          {/* Tabs */}
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="flex border-b border-gray-200">
               {(["overview", "syllabus", "facilitators"] as const).map(tab => (
@@ -89,16 +107,16 @@ export default function CourseDetailPage() {
               {activeTab === "syllabus" && (
                 <div>
                   <h2 className="text-[15px] font-semibold text-gray-800 mb-4">Course Syllabus</h2>
-                  {course.syllabus.length === 0 ? <p className="text-[13px] text-gray-500">Syllabus details coming soon.</p> : (
-                    <div className="flex flex-col gap-1">{course.syllabus.map((module, i) => (
-                      <div key={i} className="border border-gray-100 rounded-md overflow-hidden">
+                  {course.modules.length === 0 ? <p className="text-[13px] text-gray-500">Syllabus details coming soon.</p> : (
+                    <div className="flex flex-col gap-1">{course.modules.map((module, i) => (
+                      <div key={module.id} className="border border-gray-100 rounded-md overflow-hidden">
                         <button onClick={() => setExpandedModule(expandedModule === i ? null : i)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
                           <div className="flex items-center gap-3 text-left"><span className="text-[12px] font-medium text-gray-400 w-12 shrink-0">M{i + 1}</span><span className="text-[14px] font-medium text-gray-800">{module.title}</span></div>
                           <div className="flex items-center gap-3 shrink-0"><span className="text-[12px] text-gray-500">{module.lessons.length} session{module.lessons.length !== 1 ? "s" : ""}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-gray-400 transition-transform ${expandedModule === i ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9" /></svg></div>
                         </button>
                         {expandedModule === i && (
                           <div className="px-4 pb-3 pt-1 border-t border-gray-100">{module.lessons.map((lesson, j) => (
-                            <div key={j} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                            <div key={lesson.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
                               <div className="flex items-center gap-3"><span className="text-[11px] text-gray-400 w-5 text-center">{j + 1}</span><div><div className="text-[13px] text-gray-700">{lesson.title}</div><div className="text-[11px] text-gray-400">{lesson.facilitator}</div></div></div>
                               <span className="text-[11.5px] text-gray-400 shrink-0 ml-4">{lesson.duration}</span>
                             </div>
@@ -114,8 +132,8 @@ export default function CourseDetailPage() {
                   <h2 className="text-[15px] font-semibold text-gray-800 mb-4">Course Facilitators</h2>
                   <div className="flex flex-col gap-3">{course.facilitators.map((f, i) => (
                     <div key={i} className="flex items-center gap-3 py-2">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-[12px] font-semibold text-gray-600">{f.split(" ").filter(n => n.length > 1 && !n.includes("(")).map(n => n[0]).join("").slice(0, 2)}</div>
-                      <div className="text-[14px] font-medium text-gray-800">{f}</div>
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-[12px] font-semibold text-gray-600">{f.name.split(" ").filter(n => n.length > 1 && !n.includes("(")).map(n => n[0]).join("").slice(0, 2)}</div>
+                      <div><div className="text-[14px] font-medium text-gray-800">{f.name}</div>{f.title && <div className="text-[12px] text-gray-500">{f.title}</div>}</div>
                     </div>
                   ))}</div>
                 </div>
@@ -124,28 +142,46 @@ export default function CourseDetailPage() {
           </div>
         </div>
 
+        {/* Sidebar */}
         <div className="flex flex-col gap-5">
           <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-20">
             <div className="text-center mb-4">
-              <span className={`text-[28px] font-semibold ${course.price === 0 ? "text-green-600" : "text-gray-800"}`}>{course.price === 0 ? "Free" : `GHS ${course.price.toLocaleString()}`}</span>
+              <span className={`text-[28px] font-semibold ${course.price === 0 ? "text-green-600" : "text-gray-800"}`}>{course.price === 0 ? "Free" : "GHS " + course.price.toLocaleString()}</span>
+              <p className="text-[12px] text-gray-400 mt-1">Members only — requires course access</p>
             </div>
-            {enrolled ? (
+
+            {access?.hasAccess ? (
               <div>
                 <button className="w-full bg-brand-teal text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-teal/90 transition-colors mb-3">Continue Learning</button>
-                <div className="mt-2"><div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{enrolled.progress}%</span></div><ProgressBar value={enrolled.progress} height="h-[5px]" /></div>
+                {access.enrollment && (
+                  <div className="mt-2"><div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{access.enrollment.progress}%</span></div><ProgressBar value={access.enrollment.progress} height="h-[5px]" /></div>
+                )}
               </div>
             ) : (
-              <button className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors">{course.price === 0 ? "Enroll for Free" : "Enroll Now"}</button>
+              <div>
+                <button className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-3">
+                  {course.price === 0 ? "Request Access" : "Purchase Course"}
+                </button>
+                <p className="text-[12px] text-gray-400 text-center">You need a valid course access ID to enroll</p>
+              </div>
             )}
+
             <div className="mt-5 pt-5 border-t border-gray-100">
               <h3 className="text-[13px] font-semibold text-gray-800 mb-3">This course includes</h3>
               <div className="flex flex-col gap-2.5">
-                {[course.modules > 0 ? `${course.modules} modules, ${totalLessons} sessions` : null, course.duration !== "TBA" ? `${course.duration} duration` : null, "Certificate of completion", "CPD points upon completion", "Recorded sessions for review"].filter(Boolean).map((item, i) => (
+                {[
+                  course.modules.length > 0 ? course.modules.length + " modules, " + totalLessons + " sessions" : null,
+                  course.duration ? course.duration + " duration" : null,
+                  "Certificate of completion",
+                  "CPD points upon completion",
+                  "Recorded sessions for review",
+                ].filter(Boolean).map((item, i) => (
                   <div key={i} className="flex items-center gap-2.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-brand-teal shrink-0"><polyline points="20 6 9 17 4 12" /></svg><span className="text-[13px] text-gray-600">{item}</span></div>
                 ))}
               </div>
             </div>
           </div>
+
           {course.tags.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-lg p-5"><h3 className="text-[13px] font-semibold text-gray-800 mb-3">Topics</h3><div className="flex flex-wrap gap-2">{course.tags.map(tag => <span key={tag} className="bg-gray-100 text-gray-600 text-[12px] px-2.5 py-1 rounded-md">{tag}</span>)}</div></div>
           )}

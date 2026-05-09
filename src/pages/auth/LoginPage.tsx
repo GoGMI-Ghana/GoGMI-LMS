@@ -1,43 +1,34 @@
 import { useState } from "react";
-import { useLocation, Navigate } from "react-router-dom";
+import { useLocation, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import gogmiLogo from "../../assets/images/gogmilogo.png";
 
 export default function LoginPage() {
-  const { login, isAuthenticated, user } = useAuth();
-
+  const { login, isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // If already logged in, redirect based on role
   const from = (location.state as { from?: string })?.from;
   if (isAuthenticated && user) {
-    const defaultRoute = user.role === "admin" ? "/admin" : "/dashboard";
+    const defaultRoute = user.role === "ADMIN" ? "/admin" : "/dashboard";
     return <Navigate to={from || defaultRoute} replace />;
   }
 
   const handleSubmit = async () => {
     setError("");
-
     if (!email.trim() || !password.trim()) {
       setError("Please enter your email and password.");
       return;
     }
-
-    setIsLoading(true);
     try {
       await login(email, password);
-      // Navigation happens via the redirect above on re-render
-    } catch {
-      setError("Invalid credentials. Please try again.");
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     }
   };
 
@@ -86,17 +77,16 @@ export default function LoginPage() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="w-full max-w-[400px]" onKeyDown={handleKeyDown}>
-          <div className="lg:hidden flex items-center gap-3 mb-10">
+          <div className="flex items-center gap-3 mb-8">
             <img src={gogmiLogo} alt="GoGMI" className="w-10 h-10 rounded-full object-cover" />
-            <div><div className="text-gray-800 text-[16px] font-semibold">GoGMI</div><div className="text-gray-400 text-[11px]">Learning Platform</div></div>
-          </div>
-          <div className="hidden lg:flex items-center gap-3 mb-8">
-            <img src={gogmiLogo} alt="GoGMI" className="w-10 h-10 rounded-full object-cover" />
-            <div><div className="text-gray-800 text-[16px] font-semibold">GoGMI</div><div className="text-gray-400 text-[11px]">Learning Platform</div></div>
+            <div>
+              <div className="text-gray-800 text-[16px] font-semibold">GoGMI</div>
+              <div className="text-gray-400 text-[11px]">Learning Platform</div>
+            </div>
           </div>
 
           <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome back</h2>
-          <p className="text-[14px] text-gray-500 mb-8">Sign in with your credentials to access your courses.</p>
+          <p className="text-[14px] text-gray-500 mb-8">Sign in to continue your learning.</p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-5" role="alert">
@@ -139,26 +129,10 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <p className="text-center text-[13px] text-gray-400 mt-8">Don't have login credentials? Contact your administrator.</p>
-
-          {/* Demo hint — remove in production */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <p className="text-[11.5px] text-gray-400 text-center mb-2">Demo: use any password</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setEmail("student@gogmi.org.gh"); setPassword("demo"); }}
-                className="flex-1 border border-gray-200 rounded-md py-1.5 text-[12px] text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
-              >
-                Student login
-              </button>
-              <button
-                onClick={() => { setEmail("admin@gogmi.org.gh"); setPassword("demo"); }}
-                className="flex-1 border border-gray-200 rounded-md py-1.5 text-[12px] text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
-              >
-                Admin login
-              </button>
-            </div>
-          </div>
+          <p className="text-center text-[13.5px] text-gray-500 mt-8">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-brand-teal font-medium hover:underline">Create account</Link>
+          </p>
         </div>
       </div>
     </div>
