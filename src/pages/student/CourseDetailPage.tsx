@@ -1,45 +1,39 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
+import { api } from "../../services/api";
 import { ProgressBar, LoadingSpinner } from "../../components/common";
 
+const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+
 interface Course {
-  id: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  category: string;
-  level: string;
-  duration: string;
-  thumbnailCode: string;
-  thumbnailColor: string;
-  price: number;
-  currency: string;
-  featured: boolean;
-  format: string;
-  targetGroup: string;
-  students: number;
-  tags: string[];
+  id: string; title: string; subtitle: string; description: string; category: string;
+  level: string; duration: string; thumbnailCode: string; thumbnailColor: string;
+  thumbnailImage: string | null; price: number; currency: string; featured: boolean;
+  format: string; targetGroup: string; students: number; tags: string[];
   facilitators: { name: string; title: string }[];
   outcomes: string[];
   modules: { id: string; title: string; order: number; lessons: { id: string; title: string; facilitator: string; duration: string }[] }[];
 }
 
-interface AccessCheck {
-  hasAccess: boolean;
-  enrollment: { progress: number; status: string } | null;
-}
+interface AccessCheck { hasAccess: boolean; enrollment: { progress: number; status: string; courseAccessId: string | null } | null; }
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { data: course, isLoading } = useApi<Course>("/courses/" + courseId);
-  const { data: access } = useApi<AccessCheck>("/courses/" + courseId + "/access");
+  const { data: access, refetch: refetchAccess } = useApi<AccessCheck>("/courses/" + courseId + "/access");
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "syllabus" | "facilitators">("overview");
 
-  if (isLoading) return <LoadingSpinner />;
+  // Enrollment modal
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [enrollError, setEnrollError] = useState("");
+  const [enrollSuccess, setEnrollSuccess] = useState("");
 
+  if (isLoading) return <LoadingSpinner />;
   if (!course) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg py-16 flex flex-col items-center">
@@ -50,6 +44,22 @@ export default function CourseDetailPage() {
   }
 
   const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  const thumbnailSrc = course.thumbnailImage ? API_BASE + course.thumbnailImage : null;
+
+  const handleEnroll = async () => {
+    setEnrollError("");
+    setEnrollSuccess("");
+    if (!accessCode.trim()) { setEnrollError("Please enter your course access code."); return; }
+    setEnrollLoading(true);
+    try {
+      const result = await api.post<{ message: string }>("/courses/" + courseId + "/enroll", { accessCode: accessCode.trim() });
+      setEnrollSuccess(result.message);
+      setAccessCode("");
+      setTimeout(() => { setShowEnrollModal(false); setEnrollSuccess(""); refetchAccess(); }, 2000);
+    } catch (err) {
+      setEnrollError(err instanceof Error ? err.message : "Verification failed.");
+    } finally { setEnrollLoading(false); }
+  };
 
   return (
     <div>
@@ -60,11 +70,17 @@ export default function CourseDetailPage() {
 
       <div className="grid grid-cols-[1fr_360px] gap-6">
         <div className="flex flex-col gap-5">
-          {/* Hero */}
+          {/* Hero with real image */}
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}>
-              <span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span>
-            </div>
+            {thumbnailSrc ? (
+              <div className="h-56 overflow-hidden">
+                <img src={thumbnailSrc} alt={course.title} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}>
+                <span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span>
+              </div>
+            )}
             <div className="p-6">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[11px] font-medium text-brand-teal uppercase tracking-wider">{course.category}</span>
@@ -76,9 +92,12 @@ export default function CourseDetailPage() {
               <p className="text-[13px] text-gray-400 italic mb-4">{course.subtitle}</p>
               <div className="flex items-center gap-4 text-[13px] text-gray-500 flex-wrap">
                 <span>{course.duration}</span>
-                {course.modules.length > 0 && <><span className="text-gray-300">·</span><span>{course.modules.length} modules</span></>}
-                {totalLessons > 0 && <><span className="text-gray-300">·</span><span>{totalLessons} sessions</span></>}
-                {course.students > 0 && <><span className="text-gray-300">·</span><span>{course.students} enrolled</span></>}
+                <span className="text-gray-300">·</span>
+                <span>{course.modules.length} modules</span>
+                <span className="text-gray-300">·</span>
+                <span>{totalLessons} sessions</span>
+                <span className="text-gray-300">·</span>
+                <span>{course.students} enrolled</span>
               </div>
             </div>
           </div>
@@ -107,24 +126,22 @@ export default function CourseDetailPage() {
               {activeTab === "syllabus" && (
                 <div>
                   <h2 className="text-[15px] font-semibold text-gray-800 mb-4">Course Syllabus</h2>
-                  {course.modules.length === 0 ? <p className="text-[13px] text-gray-500">Syllabus details coming soon.</p> : (
-                    <div className="flex flex-col gap-1">{course.modules.map((module, i) => (
-                      <div key={module.id} className="border border-gray-100 rounded-md overflow-hidden">
-                        <button onClick={() => setExpandedModule(expandedModule === i ? null : i)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
-                          <div className="flex items-center gap-3 text-left"><span className="text-[12px] font-medium text-gray-400 w-12 shrink-0">M{i + 1}</span><span className="text-[14px] font-medium text-gray-800">{module.title}</span></div>
-                          <div className="flex items-center gap-3 shrink-0"><span className="text-[12px] text-gray-500">{module.lessons.length} session{module.lessons.length !== 1 ? "s" : ""}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-gray-400 transition-transform ${expandedModule === i ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9" /></svg></div>
-                        </button>
-                        {expandedModule === i && (
-                          <div className="px-4 pb-3 pt-1 border-t border-gray-100">{module.lessons.map((lesson, j) => (
-                            <div key={lesson.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                              <div className="flex items-center gap-3"><span className="text-[11px] text-gray-400 w-5 text-center">{j + 1}</span><div><div className="text-[13px] text-gray-700">{lesson.title}</div><div className="text-[11px] text-gray-400">{lesson.facilitator}</div></div></div>
-                              <span className="text-[11.5px] text-gray-400 shrink-0 ml-4">{lesson.duration}</span>
-                            </div>
-                          ))}</div>
-                        )}
-                      </div>
-                    ))}</div>
-                  )}
+                  <div className="flex flex-col gap-1">{course.modules.map((module, i) => (
+                    <div key={module.id} className="border border-gray-100 rounded-md overflow-hidden">
+                      <button onClick={() => setExpandedModule(expandedModule === i ? null : i)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3 text-left"><span className="text-[12px] font-medium text-gray-400 w-12 shrink-0">M{i + 1}</span><span className="text-[14px] font-medium text-gray-800">{module.title}</span></div>
+                        <div className="flex items-center gap-3 shrink-0"><span className="text-[12px] text-gray-500">{module.lessons.length} session{module.lessons.length !== 1 ? "s" : ""}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-gray-400 transition-transform ${expandedModule === i ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9" /></svg></div>
+                      </button>
+                      {expandedModule === i && (
+                        <div className="px-4 pb-3 pt-1 border-t border-gray-100">{module.lessons.map((lesson, j) => (
+                          <div key={lesson.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                            <div className="flex items-center gap-3"><span className="text-[11px] text-gray-400 w-5 text-center">{j + 1}</span><div><div className="text-[13px] text-gray-700">{lesson.title}</div><div className="text-[11px] text-gray-400">{lesson.facilitator}</div></div></div>
+                            <span className="text-[11.5px] text-gray-400 shrink-0 ml-4">{lesson.duration}</span>
+                          </div>
+                        ))}</div>
+                      )}
+                    </div>
+                  ))}</div>
                 </div>
               )}
               {activeTab === "facilitators" && (
@@ -146,23 +163,33 @@ export default function CourseDetailPage() {
         <div className="flex flex-col gap-5">
           <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-20">
             <div className="text-center mb-4">
-              <span className={`text-[28px] font-semibold ${course.price === 0 ? "text-green-600" : "text-gray-800"}`}>{course.price === 0 ? "Free" : "GHS " + course.price.toLocaleString()}</span>
-              <p className="text-[12px] text-gray-400 mt-1">Members only — requires course access</p>
+              <span className="text-[28px] font-semibold text-gray-800">{course.currency} {course.price.toLocaleString()}</span>
             </div>
 
             {access?.hasAccess ? (
               <div>
                 <button className="w-full bg-brand-teal text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-teal/90 transition-colors mb-3">Continue Learning</button>
                 {access.enrollment && (
-                  <div className="mt-2"><div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{access.enrollment.progress}%</span></div><ProgressBar value={access.enrollment.progress} height="h-[5px]" /></div>
+                  <div className="mt-2">
+                    <div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{access.enrollment.progress}%</span></div>
+                    <ProgressBar value={access.enrollment.progress} height="h-[5px]" />
+                    {access.enrollment.courseAccessId && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Access Code</div>
+                        <div className="text-[13px] font-mono text-gray-600">{access.enrollment.courseAccessId}</div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
               <div>
-                <button className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-3">
-                  {course.price === 0 ? "Request Access" : "Purchase Course"}
+                <button onClick={() => setShowEnrollModal(true)} className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-2">
+                  Enroll in Course
                 </button>
-                <p className="text-[12px] text-gray-400 text-center">You need a valid course access ID to enroll</p>
+                <p className="text-[12px] text-gray-400 text-center leading-relaxed">
+                  Enter your course certificate ID to verify your enrollment eligibility.
+                </p>
               </div>
             )}
 
@@ -170,12 +197,12 @@ export default function CourseDetailPage() {
               <h3 className="text-[13px] font-semibold text-gray-800 mb-3">This course includes</h3>
               <div className="flex flex-col gap-2.5">
                 {[
-                  course.modules.length > 0 ? course.modules.length + " modules, " + totalLessons + " sessions" : null,
-                  course.duration ? course.duration + " duration" : null,
+                  course.modules.length + " modules, " + totalLessons + " sessions",
+                  course.duration + " duration",
                   "Certificate of completion",
                   "CPD points upon completion",
                   "Recorded sessions for review",
-                ].filter(Boolean).map((item, i) => (
+                ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-brand-teal shrink-0"><polyline points="20 6 9 17 4 12" /></svg><span className="text-[13px] text-gray-600">{item}</span></div>
                 ))}
               </div>
@@ -187,6 +214,53 @@ export default function CourseDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Enrollment Modal */}
+      {showEnrollModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => { setShowEnrollModal(false); setEnrollError(""); setEnrollSuccess(""); }}>
+          <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
+            <p className="text-[13px] text-gray-500 mb-5">
+              Enter your course certificate ID to verify your eligibility and gain access to the course materials.
+            </p>
+
+            {enrollError && (
+              <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4">
+                <p className="text-[13px] text-red-700">{enrollError}</p>
+              </div>
+            )}
+
+            {enrollSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-4">
+                <p className="text-[13px] text-green-700">{enrollSuccess}</p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Course Certificate ID</label>
+              <input
+                type="text"
+                value={accessCode}
+                onChange={e => setAccessCode(e.target.value.toUpperCase())}
+                placeholder="e.g. GOGMI-MG-2026-001"
+                className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-wide"
+                onKeyDown={e => { if (e.key === "Enter") handleEnroll(); }}
+              />
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => { setShowEnrollModal(false); setEnrollError(""); }} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={handleEnroll} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
+                {enrollLoading ? "Verifying..." : "Verify & Enroll"}
+              </button>
+            </div>
+
+            <p className="text-[11.5px] text-gray-400 text-center mt-4">
+              Don't have a certificate ID? Contact GoGMI at info@gogmi.org.gh
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
