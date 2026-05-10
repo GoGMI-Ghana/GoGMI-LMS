@@ -5,7 +5,7 @@ export const currentUser: User = {
   firstName: "Kwame",
   lastName: "Asante",
   email: "k.asante@example.com",
-  role: "student",
+  role: "STUDENT",
   initials: "KA",
   cpdPoints: 24,
   cpdTarget: 40,
