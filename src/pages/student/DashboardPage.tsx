@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import { LoadingSpinner } from "../../components/common";
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
-
+const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
 interface Course {
   id: string; title: string; subtitle: string; description: string; category: string;
   level: string; duration: string; thumbnailCode: string; thumbnailColor: string;

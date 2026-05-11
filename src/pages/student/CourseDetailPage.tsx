@@ -4,7 +4,7 @@ import { useApi } from "../../hooks/useApi";
 import { api } from "../../services/api";
 import { ProgressBar, LoadingSpinner } from "../../components/common";
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
 
 interface Course {
   id: string; title: string; subtitle: string; description: string; category: string;
