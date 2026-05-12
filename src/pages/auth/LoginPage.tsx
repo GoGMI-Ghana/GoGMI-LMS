@@ -3,6 +3,7 @@ import { useLocation, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import gogmiLogo from "../../assets/images/gogmilogo.png";
 
+
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
@@ -117,7 +118,7 @@ export default function LoginPage() {
                 <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-brand-teal focus:ring-brand-teal cursor-pointer" />
                 <span className="text-[13px] text-gray-600">Remember me</span>
               </label>
-              <button className="text-[13px] text-brand-teal font-medium hover:underline cursor-pointer">Forgot password?</button>
+              <Link to="/forgot-password" className="text-[13px] text-brand-teal font-medium hover:underline">Forgot password?</Link>
             </div>
             <button onClick={handleSubmit} disabled={isLoading} className={`w-full py-2.5 rounded-md text-[14px] font-medium text-white transition-colors cursor-pointer mt-1 ${isLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
               {isLoading ? (
