@@ -26,12 +26,16 @@ export default function CourseDetailPage() {
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "syllabus" | "facilitators">("overview");
 
-  // Enrollment modal
+  // Enrollment flow state
   const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [accessCode, setAccessCode] = useState("");
+  const [enrollStep, setEnrollStep] = useState<"certificate" | "otp" | "success">("certificate");
+  const [certificateId, setCertificateId] = useState("");
+  const [otp, setOtp] = useState("");
+  const [verificationKey, setVerificationKey] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [registrantName, setRegistrantName] = useState("");
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [enrollError, setEnrollError] = useState("");
-  const [enrollSuccess, setEnrollSuccess] = useState("");
 
   if (isLoading) return <LoadingSpinner />;
   if (!course) {
@@ -46,19 +50,42 @@ export default function CourseDetailPage() {
   const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
   const thumbnailSrc = course.thumbnailImage ? API_BASE + course.thumbnailImage : null;
 
-  const handleEnroll = async () => {
+  const handleVerifyCertificate = async () => {
     setEnrollError("");
-    setEnrollSuccess("");
-    if (!accessCode.trim()) { setEnrollError("Please enter your course access code."); return; }
+    if (!certificateId.trim()) { setEnrollError("Please enter your course certificate ID."); return; }
     setEnrollLoading(true);
     try {
-      const result = await api.post<{ message: string }>("/courses/" + courseId + "/enroll", { accessCode: accessCode.trim() });
-      setEnrollSuccess(result.message);
-      setAccessCode("");
-      setTimeout(() => { setShowEnrollModal(false); setEnrollSuccess(""); refetchAccess(); }, 2000);
+      const result = await api.post<{ message: string; verificationKey: string; registrantName: string; maskedEmail: string }>("/courses/" + courseId + "/verify", { certificateId: certificateId.trim() });
+      setVerificationKey(result.verificationKey);
+      setMaskedEmail(result.maskedEmail);
+      setRegistrantName(result.registrantName);
+      setEnrollStep("otp");
     } catch (err) {
       setEnrollError(err instanceof Error ? err.message : "Verification failed.");
     } finally { setEnrollLoading(false); }
+  };
+
+  const handleVerifyOtp = async () => {
+    setEnrollError("");
+    if (otp.length !== 6) { setEnrollError("Please enter the 6-digit code."); return; }
+    setEnrollLoading(true);
+    try {
+      await api.post("/courses/" + courseId + "/enroll", { verificationKey, otp });
+      setEnrollStep("success");
+      setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2500);
+    } catch (err) {
+      setEnrollError(err instanceof Error ? err.message : "Verification failed.");
+    } finally { setEnrollLoading(false); }
+  };
+
+  const resetModal = () => {
+    setEnrollStep("certificate");
+    setCertificateId("");
+    setOtp("");
+    setVerificationKey("");
+    setMaskedEmail("");
+    setRegistrantName("");
+    setEnrollError("");
   };
 
   return (
@@ -70,16 +97,11 @@ export default function CourseDetailPage() {
 
       <div className="grid grid-cols-[1fr_360px] gap-6">
         <div className="flex flex-col gap-5">
-          {/* Hero with real image */}
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {thumbnailSrc ? (
-              <div className="h-56 overflow-hidden">
-                <img src={thumbnailSrc} alt={course.title} className="w-full h-full object-cover" />
-              </div>
+              <div className="h-56 overflow-hidden"><img src={thumbnailSrc} alt={course.title} className="w-full h-full object-cover" /></div>
             ) : (
-              <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}>
-                <span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span>
-              </div>
+              <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}><span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span></div>
             )}
             <div className="p-6">
               <div className="flex items-center gap-2 mb-2">
@@ -91,18 +113,11 @@ export default function CourseDetailPage() {
               <h1 className="text-[22px] font-semibold text-gray-800 mb-1 leading-tight">{course.title}</h1>
               <p className="text-[13px] text-gray-400 italic mb-4">{course.subtitle}</p>
               <div className="flex items-center gap-4 text-[13px] text-gray-500 flex-wrap">
-                <span>{course.duration}</span>
-                <span className="text-gray-300">·</span>
-                <span>{course.modules.length} modules</span>
-                <span className="text-gray-300">·</span>
-                <span>{totalLessons} sessions</span>
-                <span className="text-gray-300">·</span>
-                <span>{course.students} enrolled</span>
+                <span>{course.duration}</span><span className="text-gray-300">·</span><span>{course.modules.length} modules</span><span className="text-gray-300">·</span><span>{totalLessons} sessions</span><span className="text-gray-300">·</span><span>{course.students} enrolled</span>
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="flex border-b border-gray-200">
               {(["overview", "syllabus", "facilitators"] as const).map(tab => (
@@ -162,9 +177,10 @@ export default function CourseDetailPage() {
         {/* Sidebar */}
         <div className="flex flex-col gap-5">
           <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-20">
-            <div className="text-center mb-4">
+            <div className="text-center mb-1">
               <span className="text-[28px] font-semibold text-gray-800">{course.currency} {course.price.toLocaleString()}</span>
             </div>
+            <p className="text-[11.5px] text-gray-400 text-center mb-4">GHS 350 (Members) · GHS 450 (Non-members)</p>
 
             {access?.hasAccess ? (
               <div>
@@ -175,7 +191,7 @@ export default function CourseDetailPage() {
                     <ProgressBar value={access.enrollment.progress} height="h-[5px]" />
                     {access.enrollment.courseAccessId && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Access Code</div>
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Certificate ID</div>
                         <div className="text-[13px] font-mono text-gray-600">{access.enrollment.courseAccessId}</div>
                       </div>
                     )}
@@ -184,11 +200,11 @@ export default function CourseDetailPage() {
               </div>
             ) : (
               <div>
-                <button onClick={() => setShowEnrollModal(true)} className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-2">
+                <button onClick={() => { resetModal(); setShowEnrollModal(true); }} className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-2">
                   Enroll in Course
                 </button>
                 <p className="text-[12px] text-gray-400 text-center leading-relaxed">
-                  Enter your course certificate ID to verify your enrollment eligibility.
+                  Enter your course certificate ID to verify enrollment eligibility.
                 </p>
               </div>
             )}
@@ -196,13 +212,7 @@ export default function CourseDetailPage() {
             <div className="mt-5 pt-5 border-t border-gray-100">
               <h3 className="text-[13px] font-semibold text-gray-800 mb-3">This course includes</h3>
               <div className="flex flex-col gap-2.5">
-                {[
-                  course.modules.length + " modules, " + totalLessons + " sessions",
-                  course.duration + " duration",
-                  "Certificate of completion",
-                  "CPD points upon completion",
-                  "Recorded sessions for review",
-                ].map((item, i) => (
+                {[course.modules.length + " modules, " + totalLessons + " sessions", course.duration + " duration", "Certificate of completion", "CPD points upon completion", "Recorded sessions for review"].map((item, i) => (
                   <div key={i} className="flex items-center gap-2.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-brand-teal shrink-0"><polyline points="20 6 9 17 4 12" /></svg><span className="text-[13px] text-gray-600">{item}</span></div>
                 ))}
               </div>
@@ -215,49 +225,80 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      {/* Enrollment Modal */}
+      {/* Enrollment Modal — 2 steps */}
       {showEnrollModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => { setShowEnrollModal(false); setEnrollError(""); setEnrollSuccess(""); }}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => { setShowEnrollModal(false); resetModal(); }}>
           <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
-            <p className="text-[13px] text-gray-500 mb-5">
-              Enter your course certificate ID to verify your eligibility and gain access to the course materials.
-            </p>
 
-            {enrollError && (
-              <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4">
-                <p className="text-[13px] text-red-700">{enrollError}</p>
+            {/* Step 1: Certificate ID */}
+            {enrollStep === "certificate" && (
+              <div>
+                <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
+                <p className="text-[13px] text-gray-500 mb-5">Enter your course certificate ID to verify your eligibility. A verification code will be sent to your registered email.</p>
+
+                {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
+
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Course Certificate ID</label>
+                  <input type="text" value={certificateId} onChange={e => setCertificateId(e.target.value.toUpperCase())} placeholder="e.g. GoGMI-CTMG2026-0001" onKeyDown={e => { if (e.key === "Enter") handleVerifyCertificate(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-wide" />
+                </div>
+
+                <div className="flex gap-3 mt-5">
+                  <button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
+                  <button onClick={handleVerifyCertificate} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
+                    {enrollLoading ? "Verifying..." : "Verify"}
+                  </button>
+                </div>
+
+                <p className="text-[11.5px] text-gray-400 text-center mt-4">Don't have a certificate ID? Contact GoGMI at info@gogmi.org.gh</p>
               </div>
             )}
 
-            {enrollSuccess && (
-              <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-4">
-                <p className="text-[13px] text-green-700">{enrollSuccess}</p>
+            {/* Step 2: OTP verification */}
+            {enrollStep === "otp" && (
+              <div>
+                <button onClick={() => { setEnrollStep("certificate"); setEnrollError(""); setOtp(""); }} className="flex items-center gap-1 text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer mb-4">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+                  Back
+                </button>
+
+                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3F" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,7 12,13 2,7" /></svg>
+                </div>
+
+                <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Verify Your Identity</h2>
+                <p className="text-[13px] text-gray-500 mb-1">
+                  Certificate verified for <span className="font-medium text-gray-700">{registrantName}</span>.
+                </p>
+                <p className="text-[13px] text-gray-500 mb-5">
+                  A 6-digit verification code has been sent to <span className="font-medium text-gray-700">{maskedEmail}</span>.
+                </p>
+
+                {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
+
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Verification Code</label>
+                  <input type="text" value={otp} onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 6); setOtp(v); }} placeholder="000000" maxLength={6} onKeyDown={e => { if (e.key === "Enter") handleVerifyOtp(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-3 text-[20px] text-center text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-[12px]" />
+                </div>
+
+                <button onClick={handleVerifyOtp} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors mt-5 ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
+                  {enrollLoading ? "Verifying..." : "Complete Enrollment"}
+                </button>
+
+                <p className="text-[11.5px] text-gray-400 text-center mt-4">Code expires in 10 minutes. Check your spam folder if you don't see it.</p>
               </div>
             )}
 
-            <div>
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Course Certificate ID</label>
-              <input
-                type="text"
-                value={accessCode}
-                onChange={e => setAccessCode(e.target.value.toUpperCase())}
-                placeholder="e.g. GOGMI-MG-2026-001"
-                className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-wide"
-                onKeyDown={e => { if (e.key === "Enter") handleEnroll(); }}
-              />
-            </div>
-
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => { setShowEnrollModal(false); setEnrollError(""); }} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleEnroll} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
-                {enrollLoading ? "Verifying..." : "Verify & Enroll"}
-              </button>
-            </div>
-
-            <p className="text-[11.5px] text-gray-400 text-center mt-4">
-              Don't have a certificate ID? Contact GoGMI at info@gogmi.org.gh
-            </p>
+            {/* Step 3: Success */}
+            {enrollStep === "success" && (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                </div>
+                <h2 className="text-[20px] font-semibold text-gray-800 mb-2">Enrollment Complete!</h2>
+                <p className="text-[14px] text-gray-500">You now have access to {course.title}. Redirecting to your course...</p>
+              </div>
+            )}
           </div>
         </div>
       )}
