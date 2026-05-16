@@ -2,13 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import gogmiLogo from "../../assets/images/gogmilogo.png";
 
-interface NavItem {
-  label: string;
-  to: string;
-  badge?: number;
-}
-
-const mainNav: NavItem[] = [
+const mainNav = [
   { label: "Overview", to: "/admin" },
   { label: "Users", to: "/admin/users" },
   { label: "Courses", to: "/admin/courses" },
@@ -17,36 +11,14 @@ const mainNav: NavItem[] = [
   { label: "Certificates", to: "/admin/certificates" },
   { label: "Payments", to: "/admin/payments" },
   { label: "Announcements", to: "/admin/announcements" },
+  { label: "Files", to: "/admin/files" },
   { label: "Reports", to: "/admin/reports" },
 ];
 
-const bottomNav: NavItem[] = [
+const bottomNav = [
   { label: "Settings", to: "/admin/settings" },
   { label: "Back to LMS", to: "/dashboard" },
 ];
-
-function AdminSidebarLink({ item }: { item: NavItem }) {
-  return (
-    <NavLink
-      to={item.to}
-      end={item.to === "/admin"}
-      className={({ isActive }) =>
-        `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full transition-colors duration-150
-        ${isActive
-          ? "bg-white/10 text-white font-medium"
-          : "text-gray-400 hover:bg-white/5 hover:text-gray-300"
-        }`
-      }
-    >
-      {item.label}
-      {item.badge && (
-        <span className="ml-auto bg-red-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
-          {item.badge}
-        </span>
-      )}
-    </NavLink>
-  );
-}
 
 export default function AdminSidebar() {
   const { logout } = useAuth();
@@ -65,19 +37,20 @@ export default function AdminSidebar() {
 
       <nav className="flex-1 flex flex-col px-3 py-4 gap-0.5 overflow-y-auto">
         {mainNav.map(item => (
-          <AdminSidebarLink key={item.to} item={item} />
+          <NavLink key={item.to} to={item.to} end={item.to === "/admin"}
+            className={({ isActive }) => `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full transition-colors duration-150 ${isActive ? "bg-white/10 text-white font-medium" : "text-gray-400 hover:bg-white/5 hover:text-gray-300"}`}>
+            {item.label}
+          </NavLink>
         ))}
-
         <div className="flex-1" />
-
         <div className="border-t border-gray-800 pt-3 mt-2 flex flex-col gap-0.5">
           {bottomNav.map(item => (
-            <AdminSidebarLink key={item.to} item={item} />
+            <NavLink key={item.to} to={item.to}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-white/5 hover:text-gray-300 transition-colors duration-150">
+              {item.label}
+            </NavLink>
           ))}
-          <button
-            onClick={logout}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-white/5 hover:text-gray-300 transition-colors duration-150 cursor-pointer mt-1"
-          >
+          <button onClick={logout} className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-white/5 hover:text-gray-300 transition-colors duration-150 cursor-pointer mt-1">
             Sign out
           </button>
         </div>

@@ -4,6 +4,8 @@ let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  // Store on window so file upload FormData requests can access it
+  (window as unknown as Record<string, unknown>).__accessToken = token;
 }
 
 export function getAccessToken(): string | null {
@@ -12,48 +14,28 @@ export function getAccessToken(): string | null {
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      credentials: "include", // sends the HttpOnly cookie
-    });
+    const res = await fetch(`${API_BASE}/auth/refresh`, { method: "POST", credentials: "include" });
     if (!res.ok) return null;
     const data = await res.json();
-    accessToken = data.accessToken;
+    setAccessToken(data.accessToken);
     return accessToken;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-export async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
+  let res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: "include" });
 
-  let res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  // If 401, try refreshing the token once
   if (res.status === 401 && !path.includes("/auth/login")) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       headers["Authorization"] = `Bearer ${newToken}`;
-      res = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers,
-        credentials: "include",
-      });
+      res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: "include" });
     }
   }
 
@@ -61,15 +43,12 @@ export async function apiRequest<T>(
     const error = await res.json().catch(() => ({ error: "Request failed" }));
     throw new Error(error.error || "Request failed");
   }
-
   return res.json();
 }
 
 export const api = {
   get: <T>(path: string) => apiRequest<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    apiRequest<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
-  patch: <T>(path: string, body: unknown) =>
-    apiRequest<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  post: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  patch: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: "DELETE" }),
 };
