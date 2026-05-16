@@ -30,7 +30,7 @@ const assessments = [
 ];
 
 export default function InstructorCourseManagePage() {
-  const { courseId } = useParams();
+  const { courseId: _courseId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"content" | "students" | "assessments">("content");
   const [showUploadModal, setShowUploadModal] = useState(false);
