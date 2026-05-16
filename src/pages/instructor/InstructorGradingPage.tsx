@@ -1,70 +1,93 @@
 import { useState } from "react";
+import { useApi } from "../../hooks/useApi";
+import { api } from "../../services/api";
+import { LoadingSpinner } from "../../components/common";
 
-const submissions = [
-  { id: "s1", student: "Babiker Alayas Osman", assignment: "SWOT Analysis Activity", submitted: "May 10, 2026", status: "pending" as const, score: null, course: "Maritime Governance" },
-  { id: "s2", student: "Atari Emmanuel Afri", assignment: "SWOT Analysis Activity", submitted: "May 11, 2026", status: "pending" as const, score: null, course: "Maritime Governance" },
-  { id: "s3", student: "Ama Serwaa Mensah", assignment: "Vision Statement Draft", submitted: "May 11, 2026", status: "pending" as const, score: null, course: "Maritime Governance" },
-  { id: "s4", student: "Kofi Asante Boateng", assignment: "Module 1 Quiz", submitted: "May 8, 2026", status: "graded" as const, score: 85, course: "Maritime Governance" },
-  { id: "s5", student: "Ama Serwaa Mensah", assignment: "Module 1 Quiz", submitted: "May 7, 2026", status: "graded" as const, score: 92, course: "Maritime Governance" },
-];
-
-const statusStyles: Record<string, string> = { pending: "bg-brand-amber-light text-brand-amber", graded: "bg-green-50 text-green-700" };
+interface Submission {
+  id: string; student: string; studentEmail: string; assignment: string; type: string;
+  course: string; maxScore: number; status: string; score: number | null;
+  feedback: string | null; submittedAt: string | null; gradedAt: string | null;
+}
 
 export default function InstructorGradingPage() {
-  const [filter, setFilter] = useState<"all" | "pending" | "graded">("all");
-  const [showGradeModal, setShowGradeModal] = useState<string | null>(null);
+  const { data: submissions, isLoading, refetch } = useApi<Submission[]>("/instructor/submissions");
+  const [filter, setFilter] = useState<"all" | "SUBMITTED" | "GRADED">("all");
+  const [gradeModal, setGradeModal] = useState<Submission | null>(null);
+  const [score, setScore] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [grading, setGrading] = useState(false);
+  const [gradeError, setGradeError] = useState("");
 
-  const filtered = filter === "all" ? submissions : submissions.filter(s => s.status === filter);
-  const pendingCount = submissions.filter(s => s.status === "pending").length;
+  if (isLoading) return <LoadingSpinner />;
+
+  const filtered = filter === "all" ? (submissions || []) : (submissions || []).filter(s => s.status === filter);
+  const pendingCount = (submissions || []).filter(s => s.status === "SUBMITTED").length;
+
+  const handleGrade = async () => {
+    if (!gradeModal) return;
+    setGradeError("");
+    const scoreNum = parseInt(score);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > gradeModal.maxScore) { setGradeError("Score must be between 0 and " + gradeModal.maxScore); return; }
+    setGrading(true);
+    try {
+      await api.patch("/instructor/submissions/" + gradeModal.id + "/grade", { score: scoreNum, feedback: feedback || undefined });
+      setGradeModal(null); setScore(""); setFeedback("");
+      refetch();
+    } catch (err) { setGradeError(err instanceof Error ? err.message : "Failed to grade"); }
+    finally { setGrading(false); }
+  };
 
   return (
     <div>
-      <div className="mb-7">
-        <h1 className="text-[22px] font-semibold text-gray-800 mb-1">Grading</h1>
-        <p className="text-[14px] text-gray-500">{pendingCount} submission{pendingCount !== 1 ? "s" : ""} pending review.</p>
-      </div>
+      <div className="mb-7"><h1 className="text-[22px] font-semibold text-gray-800 mb-1">Grading</h1><p className="text-[14px] text-gray-500">{pendingCount} submission{pendingCount !== 1 ? "s" : ""} pending review.</p></div>
 
       <div className="flex gap-1.5 mb-5">
-        {(["all", "pending", "graded"] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors cursor-pointer capitalize ${filter === f ? "bg-[#1a2332] text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{f === "all" ? "All" : f}</button>
+        {([["all", "All"], ["SUBMITTED", "Pending"], ["GRADED", "Graded"]] as const).map(([val, label]) => (
+          <button key={val} onClick={() => setFilter(val)} className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors cursor-pointer ${filter === val ? "bg-[#1a2332] text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{label}</button>
         ))}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead><tr className="border-b border-gray-100">
-            <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Student</th>
-            <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Assignment</th>
-            <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-            <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Score</th>
-            <th className="text-right px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Action</th>
-          </tr></thead>
-          <tbody>{filtered.map(s => (
-            <tr key={s.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-              <td className="px-5 py-3.5 text-[13px] font-medium text-gray-800">{s.student}</td>
-              <td className="px-5 py-3.5 text-[13px] text-gray-600">{s.assignment}</td>
-              <td className="px-5 py-3.5 text-[13px] text-gray-500">{s.submitted}</td>
-              <td className="px-5 py-3.5"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded capitalize ${statusStyles[s.status]}`}>{s.status}</span></td>
-              <td className="px-5 py-3.5 text-[13px] text-gray-700 font-medium">{s.score !== null ? s.score + "/100" : "—"}</td>
-              <td className="px-5 py-3.5 text-right">
-                <button onClick={() => setShowGradeModal(s.id)} className="text-[12px] text-brand-teal font-medium hover:underline cursor-pointer">{s.status === "pending" ? "Grade" : "Review"}</button>
-              </td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
+      {filtered.length > 0 ? (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead><tr className="border-b border-gray-100">
+              <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Student</th>
+              <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Assignment</th>
+              <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+              <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="text-left px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Score</th>
+              <th className="text-right px-5 py-3 text-[12px] font-medium text-gray-500 uppercase tracking-wider">Action</th>
+            </tr></thead>
+            <tbody>{filtered.map(s => (
+              <tr key={s.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                <td className="px-5 py-3.5"><div className="text-[13px] font-medium text-gray-800">{s.student}</div><div className="text-[11.5px] text-gray-400">{s.course}</div></td>
+                <td className="px-5 py-3.5 text-[13px] text-gray-600">{s.assignment}</td>
+                <td className="px-5 py-3.5 text-[13px] text-gray-500">{s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}</td>
+                <td className="px-5 py-3.5"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded capitalize ${s.status === "SUBMITTED" ? "bg-brand-amber-light text-brand-amber" : s.status === "GRADED" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"}`}>{s.status.toLowerCase()}</span></td>
+                <td className="px-5 py-3.5 text-[13px] font-medium text-gray-700">{s.score !== null ? s.score + "/" + s.maxScore : "—"}</td>
+                <td className="px-5 py-3.5 text-right"><button onClick={() => { setGradeModal(s); setScore(s.score !== null ? String(s.score) : ""); setFeedback(s.feedback || ""); }} className="text-[12px] text-brand-teal font-medium hover:underline cursor-pointer">{s.status === "SUBMITTED" ? "Grade" : "Review"}</button></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg py-12 flex items-center justify-center">
+          <p className="text-[14px] text-gray-500">No submissions found.</p>
+        </div>
+      )}
 
-      {showGradeModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setShowGradeModal(null)}>
+      {gradeModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setGradeModal(null)}>
           <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <h2 className="text-[18px] font-semibold text-gray-800 mb-5">Grade Submission</h2>
+            <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Grade Submission</h2>
+            <p className="text-[13px] text-gray-500 mb-5">{gradeModal.student} — {gradeModal.assignment}</p>
+            {gradeError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{gradeError}</p></div>}
             <div className="flex flex-col gap-3.5">
-              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Score (out of 100)</label><input type="number" max={100} min={0} className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
-              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Feedback</label><textarea rows={4} placeholder="Provide feedback to the student..." className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors resize-none" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Score (out of {gradeModal.maxScore})</label><input type="number" max={gradeModal.maxScore} min={0} value={score} onChange={e => setScore(e.target.value)} className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Feedback</label><textarea rows={4} value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Provide feedback..." className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors resize-none" /></div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowGradeModal(null)} className="flex-1 border border-gray-200 rounded-md py-2 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
-                <button onClick={() => setShowGradeModal(null)} className="flex-1 bg-[#1a2332] text-white rounded-md py-2 text-[13px] font-medium cursor-pointer hover:bg-[#243044] transition-colors">Submit Grade</button>
+                <button onClick={() => setGradeModal(null)} className="flex-1 border border-gray-200 rounded-md py-2 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
+                <button onClick={handleGrade} disabled={grading} className="flex-1 bg-[#1a2332] text-white rounded-md py-2 text-[13px] font-medium cursor-pointer hover:bg-[#243044] transition-colors">{grading ? "Saving..." : "Submit Grade"}</button>
               </div>
             </div>
           </div>
