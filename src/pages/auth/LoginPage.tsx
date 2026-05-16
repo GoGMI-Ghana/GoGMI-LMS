@@ -4,13 +4,17 @@ import { useAuth } from "../../contexts/AuthContext";
 import gogmiLogo from "../../assets/images/gogmilogo.png";
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isLoading, user } = useAuth();
+  const { login, verifyLoginOtp, isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [verificationKey, setVerificationKey] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
   const [error, setError] = useState("");
 
   const from = (location.state as { from?: string })?.from;
@@ -19,10 +23,21 @@ export default function LoginPage() {
     return <Navigate to={from || roleRoute[user.role] || "/dashboard"} replace />;
   }
 
-  const handleSubmit = async () => {
+  const handleLogin = async () => {
     setError("");
     if (!email.trim() || !password.trim()) { setError("Please enter your email and password."); return; }
-    try { await login(email, password); } catch (err) { setError(err instanceof Error ? err.message : "Login failed."); }
+    try {
+      const result = await login(email, password);
+      setVerificationKey(result.verificationKey);
+      setMaskedEmail(result.maskedEmail);
+      setStep("otp");
+    } catch (err) { setError(err instanceof Error ? err.message : "Login failed."); }
+  };
+
+  const handleVerifyOtp = async () => {
+    setError("");
+    if (otp.length !== 6) { setError("Please enter the 6-digit code."); return; }
+    try { await verifyLoginOtp(verificationKey, otp); } catch (err) { setError(err instanceof Error ? err.message : "Verification failed."); }
   };
 
   return (
@@ -44,30 +59,59 @@ export default function LoginPage() {
       </div>
 
       <div className="flex-1 flex items-center justify-center px-6">
-        <div className="w-full max-w-[400px]" onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}>
+        <div className="w-full max-w-[400px]">
           <div className="flex items-center gap-3 mb-8"><img src={gogmiLogo} alt="GoGMI" className="w-10 h-10 rounded-full object-cover" /><div><div className="text-gray-800 text-[16px] font-semibold">GoGMI</div><div className="text-gray-400 text-[11px]">Learning Platform</div></div></div>
-          <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome back</h2>
-          <p className="text-[14px] text-gray-500 mb-8">Sign in to continue your learning.</p>
-          {error && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-5"><p className="text-[13px] text-red-700">{error}</p></div>}
-          <div className="flex flex-col gap-4">
-            <div><label htmlFor="email" className="block text-[13px] font-medium text-gray-700 mb-1.5">Email address</label><input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors" /></div>
-            <div><label htmlFor="password" className="block text-[13px] font-medium text-gray-700 mb-1.5">Password</label>
-              <div className="relative"><input id="password" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 pr-10 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
-                  {showPassword ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}
+
+          {/* Step 1: Credentials */}
+          {step === "credentials" && (
+            <div onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}>
+              <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome back</h2>
+              <p className="text-[14px] text-gray-500 mb-8">Sign in to continue your learning.</p>
+              {error && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-5"><p className="text-[13px] text-red-700">{error}</p></div>}
+              <div className="flex flex-col gap-4">
+                <div><label className="block text-[13px] font-medium text-gray-700 mb-1.5">Email address</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors" /></div>
+                <div><label className="block text-[13px] font-medium text-gray-700 mb-1.5">Password</label>
+                  <div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 pr-10 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                      {showPassword ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-brand-teal focus:ring-brand-teal cursor-pointer" /><span className="text-[13px] text-gray-600">Remember me</span></label>
+                  <Link to="/forgot-password" className="text-[13px] text-brand-teal font-medium hover:underline">Forgot password?</Link>
+                </div>
+                <button onClick={handleLogin} disabled={isLoading} className={`w-full py-2.5 rounded-md text-[14px] font-medium text-white transition-colors cursor-pointer mt-1 ${isLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
+                  {isLoading ? <span className="flex items-center justify-center gap-2"><svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Verifying...</span> : "Sign in"}
                 </button>
               </div>
+              <p className="text-center text-[13.5px] text-gray-500 mt-8">Don't have an account? <Link to="/register" className="text-brand-teal font-medium hover:underline">Create account</Link></p>
             </div>
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-brand-teal focus:ring-brand-teal cursor-pointer" /><span className="text-[13px] text-gray-600">Remember me</span></label>
-              <Link to="/forgot-password" className="text-[13px] text-brand-teal font-medium hover:underline">Forgot password?</Link>
+          )}
+
+          {/* Step 2: OTP */}
+          {step === "otp" && (
+            <div onKeyDown={e => { if (e.key === "Enter") handleVerifyOtp(); }}>
+              <button onClick={() => { setStep("credentials"); setOtp(""); setError(""); }} className="flex items-center gap-1 text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer mb-5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>Back
+              </button>
+              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3F" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,7 12,13 2,7" /></svg>
+              </div>
+              <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Check your email</h2>
+              <p className="text-[14px] text-gray-500 mb-6">We sent a 6-digit verification code to <span className="font-medium text-gray-700">{maskedEmail}</span>.</p>
+              {error && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-5"><p className="text-[13px] text-red-700">{error}</p></div>}
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Verification Code</label>
+                <input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" maxLength={6} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-3 text-[20px] text-center text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-[12px]" />
+              </div>
+              <button onClick={handleVerifyOtp} disabled={isLoading} className={`w-full py-2.5 rounded-md text-[14px] font-medium text-white transition-colors cursor-pointer mt-5 ${isLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
+                {isLoading ? "Verifying..." : "Verify & Sign in"}
+              </button>
+              <p className="text-[11.5px] text-gray-400 text-center mt-4">Code expires in 10 minutes. Check your spam folder.</p>
             </div>
-            <button onClick={handleSubmit} disabled={isLoading} className={`w-full py-2.5 rounded-md text-[14px] font-medium text-white transition-colors cursor-pointer mt-1 ${isLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
-              {isLoading ? <span className="flex items-center justify-center gap-2"><svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Signing in...</span> : "Sign in"}
-            </button>
-          </div>
-          <p className="text-center text-[13.5px] text-gray-500 mt-8">Don't have an account? <Link to="/register" className="text-brand-teal font-medium hover:underline">Create account</Link></p>
+          )}
         </div>
       </div>
     </div>
