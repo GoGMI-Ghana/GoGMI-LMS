@@ -46,7 +46,7 @@ export default function AdminFilesPage() {
         const formData = new FormData();
         formData.append("file", files[i]);
 
-        const token = sessionStorage.getItem("gogmi_user") ? undefined : undefined;
+        
         const res = await fetch(API_BASE + "/uploads?type=" + activeType + (activeFolder ? "&folder=" + activeFolder : ""), {
           method: "POST",
           body: formData,
