@@ -2,13 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import gogmiLogo from "../../assets/images/gogmilogo.png";
 
-interface NavItem {
-  label: string;
-  to: string;
-  badge?: number;
-}
-
-const mainNav: NavItem[] = [
+const mainNav = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "My Courses", to: "/courses" },
   { label: "Course Catalog", to: "/catalog" },
@@ -19,32 +13,10 @@ const mainNav: NavItem[] = [
   { label: "Messages", to: "/messages", badge: 3 },
 ];
 
-const bottomNav: NavItem[] = [
+const bottomNav = [
   { label: "Settings", to: "/settings" },
   { label: "Help Centre", to: "/help" },
 ];
-
-function SidebarLink({ item }: { item: NavItem }) {
-  return (
-    <NavLink
-      to={item.to}
-      className={({ isActive }) =>
-        `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full transition-colors duration-150
-        ${isActive
-          ? "bg-brand-navy-light text-white font-medium"
-          : "text-gray-400 hover:bg-brand-navy-light hover:text-gray-300"
-        }`
-      }
-    >
-      {item.label}
-      {item.badge && (
-        <span className="ml-auto bg-red-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
-          {item.badge}
-        </span>
-      )}
-    </NavLink>
-  );
-}
 
 export default function Sidebar() {
   const { logout, user } = useAuth();
@@ -63,27 +35,38 @@ export default function Sidebar() {
 
       <nav className="flex-1 flex flex-col px-3 py-4 gap-0.5 overflow-y-auto">
         {mainNav.map(item => (
-          <SidebarLink key={item.to} item={item} />
+          <NavLink key={item.to} to={item.to}
+            className={({ isActive }) => `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full transition-colors duration-150 ${isActive ? "bg-brand-navy-light text-white font-medium" : "text-gray-400 hover:bg-brand-navy-light hover:text-gray-300"}`}>
+            {item.label}
+            {"badge" in item && item.badge && <span className="ml-auto bg-red-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">{item.badge}</span>}
+          </NavLink>
         ))}
 
         <div className="flex-1" />
 
         <div className="border-t border-brand-navy-light pt-3 mt-2 flex flex-col gap-0.5">
-          {user?.role === "ADMIN" && (
-            <NavLink
-              to="/admin"
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-brand-teal hover:bg-brand-navy-light transition-colors duration-150"
-            >
-              Admin Panel
+          {user?.role === "INSTRUCTOR" && (
+            <NavLink to="/instructor" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-brand-teal hover:bg-brand-navy-light transition-colors duration-150">
+              Instructor Portal
             </NavLink>
           )}
+          {user?.role === "ADMIN" && (
+            <>
+              <NavLink to="/instructor" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-brand-teal hover:bg-brand-navy-light transition-colors duration-150">
+                Instructor Portal
+              </NavLink>
+              <NavLink to="/admin" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-brand-teal hover:bg-brand-navy-light transition-colors duration-150">
+                Admin Panel
+              </NavLink>
+            </>
+          )}
           {bottomNav.map(item => (
-            <SidebarLink key={item.to} item={item} />
+            <NavLink key={item.to} to={item.to}
+              className={({ isActive }) => `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full transition-colors duration-150 ${isActive ? "bg-brand-navy-light text-white font-medium" : "text-gray-400 hover:bg-brand-navy-light hover:text-gray-300"}`}>
+              {item.label}
+            </NavLink>
           ))}
-          <button
-            onClick={logout}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-brand-navy-light hover:text-gray-300 transition-colors duration-150 cursor-pointer mt-1"
-          >
+          <button onClick={logout} className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-brand-navy-light hover:text-gray-300 transition-colors duration-150 cursor-pointer mt-1">
             Sign out
           </button>
         </div>

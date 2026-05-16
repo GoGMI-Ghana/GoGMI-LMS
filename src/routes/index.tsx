@@ -3,12 +3,16 @@ import { createBrowserRouter, Navigate, Outlet, type RouteObject } from "react-r
 import { AuthProvider } from "../contexts/AuthContext";
 import { AppLayout } from "../components/layout";
 import { AdminLayout } from "../components/admin";
+import { InstructorLayout } from "../components/instructor";
 import { ProtectedRoute, LoadingSpinner } from "../components/common";
 
+// Auth pages
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../pages/auth/ResetPasswordPage"));
+
+// Student pages
 const DashboardPage = lazy(() => import("../pages/student/DashboardPage"));
 const MyCoursesPage = lazy(() => import("../pages/student/MyCoursesPage"));
 const CatalogPage = lazy(() => import("../pages/student/CatalogPage"));
@@ -20,6 +24,8 @@ const DiscussionsPage = lazy(() => import("../pages/student/DiscussionsPage"));
 const MessagesPage = lazy(() => import("../pages/student/MessagesPage"));
 const SettingsPage = lazy(() => import("../pages/student/SettingsPage"));
 const HelpPage = lazy(() => import("../pages/student/HelpPage"));
+
+// Admin pages
 const AdminOverviewPage = lazy(() => import("../pages/admin/AdminOverviewPage"));
 const AdminUsersPage = lazy(() => import("../pages/admin/AdminUsersPage"));
 const AdminCoursesPage = lazy(() => import("../pages/admin/AdminCoursesPage"));
@@ -27,6 +33,17 @@ const AdminEnrollmentsPage = lazy(() => import("../pages/admin/AdminEnrollmentsP
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage"));
 const AdminAnnouncementsPage = lazy(() => import("../pages/admin/AdminAnnouncementsPage"));
 const AdminReportsPage = lazy(() => import("../pages/admin/AdminReportsPage"));
+
+// Instructor pages
+const InstructorDashboardPage = lazy(() => import("../pages/instructor/InstructorDashboardPage"));
+const InstructorCoursesPage = lazy(() => import("../pages/instructor/InstructorCoursesPage"));
+const InstructorCourseManagePage = lazy(() => import("../pages/instructor/InstructorCourseManagePage"));
+const InstructorStudentsPage = lazy(() => import("../pages/instructor/InstructorStudentsPage"));
+const InstructorAssessmentsPage = lazy(() => import("../pages/instructor/InstructorAssessmentsPage"));
+const InstructorGradingPage = lazy(() => import("../pages/instructor/InstructorGradingPage"));
+const InstructorDiscussionsPage = lazy(() => import("../pages/instructor/InstructorDiscussionsPage"));
+const InstructorAnnouncementsPage = lazy(() => import("../pages/instructor/InstructorAnnouncementsPage"));
+const InstructorAnalyticsPage = lazy(() => import("../pages/instructor/InstructorAnalyticsPage"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
@@ -40,12 +57,15 @@ const routes: RouteObject[] = [
   {
     element: <RootLayout />,
     children: [
+      // Public
       { path: "/login", element: <Lazy><LoginPage /></Lazy> },
       { path: "/register", element: <Lazy><RegisterPage /></Lazy> },
       { path: "/forgot-password", element: <Lazy><ForgotPasswordPage /></Lazy> },
       { path: "/reset-password", element: <Lazy><ResetPasswordPage /></Lazy> },
+
+      // Student + Admin + Instructor (everyone can browse courses)
       {
-        element: <ProtectedRoute allowedRoles={["STUDENT", "ADMIN"]} />,
+        element: <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "INSTRUCTOR"]} />,
         children: [{
           element: <AppLayout />,
           children: [
@@ -64,6 +84,28 @@ const routes: RouteObject[] = [
           ],
         }],
       },
+
+      // Instructor portal
+      {
+        element: <ProtectedRoute allowedRoles={["INSTRUCTOR", "ADMIN"]} />,
+        children: [{
+          path: "instructor",
+          element: <InstructorLayout />,
+          children: [
+            { index: true, element: <Lazy><InstructorDashboardPage /></Lazy> },
+            { path: "courses", element: <Lazy><InstructorCoursesPage /></Lazy> },
+            { path: "courses/:courseId", element: <Lazy><InstructorCourseManagePage /></Lazy> },
+            { path: "students", element: <Lazy><InstructorStudentsPage /></Lazy> },
+            { path: "assessments", element: <Lazy><InstructorAssessmentsPage /></Lazy> },
+            { path: "grading", element: <Lazy><InstructorGradingPage /></Lazy> },
+            { path: "discussions", element: <Lazy><InstructorDiscussionsPage /></Lazy> },
+            { path: "announcements", element: <Lazy><InstructorAnnouncementsPage /></Lazy> },
+            { path: "analytics", element: <Lazy><InstructorAnalyticsPage /></Lazy> },
+          ],
+        }],
+      },
+
+      // Admin
       {
         element: <ProtectedRoute allowedRoles={["ADMIN"]} />,
         children: [{
@@ -80,6 +122,7 @@ const routes: RouteObject[] = [
           ],
         }],
       },
+
       { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },
