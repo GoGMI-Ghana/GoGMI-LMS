@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
+import { useAuth } from "../../contexts/AuthContext";
 import { api } from "../../services/api";
 import { ProgressBar, LoadingSpinner } from "../../components/common";
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
-
+interface Lesson { id: string; title: string; facilitator: string; duration: string; contentType: string | null; contentUrl: string | null; }
+interface Module { id: string; title: string; order: number; lessons: Lesson[]; }
 interface Course {
   id: string; title: string; subtitle: string; description: string; category: string;
   level: string; duration: string; thumbnailCode: string; thumbnailColor: string;
@@ -13,20 +14,20 @@ interface Course {
   format: string; targetGroup: string; students: number; tags: string[];
   facilitators: { name: string; title: string }[];
   outcomes: string[];
-  modules: { id: string; title: string; order: number; lessons: { id: string; title: string; facilitator: string; duration: string }[] }[];
+  modules: Module[];
 }
-
 interface AccessCheck { hasAccess: boolean; enrollment: { progress: number; status: string; courseAccessId: string | null } | null; }
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: course, isLoading } = useApi<Course>("/courses/" + courseId);
   const { data: access, refetch: refetchAccess } = useApi<AccessCheck>("/courses/" + courseId + "/access");
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "syllabus" | "facilitators">("overview");
 
-  // Enrollment flow state
+  // Enrollment
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [enrollStep, setEnrollStep] = useState<"certificate" | "otp" | "success">("certificate");
   const [certificateId, setCertificateId] = useState("");
@@ -38,31 +39,26 @@ export default function CourseDetailPage() {
   const [enrollError, setEnrollError] = useState("");
 
   if (isLoading) return <LoadingSpinner />;
-  if (!course) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg py-16 flex flex-col items-center">
-        <h2 className="text-[16px] font-semibold text-gray-800 mb-1">Course not found</h2>
-        <button onClick={() => navigate("/catalog")} className="text-[13px] text-brand-teal font-medium hover:underline cursor-pointer mt-2">Back to catalog</button>
-      </div>
-    );
-  }
+  if (!course) return <div className="bg-white border border-gray-200 rounded-lg py-16 flex flex-col items-center"><h2 className="text-[16px] font-semibold text-gray-800 mb-1">Course not found</h2><button onClick={() => navigate("/catalog")} className="text-[13px] text-brand-teal font-medium hover:underline cursor-pointer mt-2">Back to catalog</button></div>;
 
   const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-  const thumbnailSrc = course.thumbnailImage ? API_BASE + course.thumbnailImage : null;
+  const isAdmin = user?.role === "ADMIN";
+
+  // Thumbnail: use local path (served from frontend public/)
+  const thumbnailSrc = course.thumbnailImage || null;
 
   const handleVerifyCertificate = async () => {
     setEnrollError("");
     if (!certificateId.trim()) { setEnrollError("Please enter your course certificate ID."); return; }
     setEnrollLoading(true);
     try {
-      const result = await api.post<{ message: string; verificationKey: string; registrantName: string; maskedEmail: string }>("/courses/" + courseId + "/verify", { certificateId: certificateId.trim() });
+      const result = await api.post<{ verificationKey: string; registrantName: string; maskedEmail: string }>("/courses/" + courseId + "/verify", { certificateId: certificateId.trim() });
       setVerificationKey(result.verificationKey);
       setMaskedEmail(result.maskedEmail);
       setRegistrantName(result.registrantName);
       setEnrollStep("otp");
-    } catch (err) {
-      setEnrollError(err instanceof Error ? err.message : "Verification failed.");
-    } finally { setEnrollLoading(false); }
+    } catch (err) { setEnrollError(err instanceof Error ? err.message : "Verification failed."); }
+    finally { setEnrollLoading(false); }
   };
 
   const handleVerifyOtp = async () => {
@@ -73,36 +69,34 @@ export default function CourseDetailPage() {
       await api.post("/courses/" + courseId + "/enroll", { verificationKey, otp });
       setEnrollStep("success");
       setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2500);
-    } catch (err) {
-      setEnrollError(err instanceof Error ? err.message : "Verification failed.");
-    } finally { setEnrollLoading(false); }
+    } catch (err) { setEnrollError(err instanceof Error ? err.message : "Verification failed."); }
+    finally { setEnrollLoading(false); }
   };
 
-  const resetModal = () => {
-    setEnrollStep("certificate");
-    setCertificateId("");
-    setOtp("");
-    setVerificationKey("");
-    setMaskedEmail("");
-    setRegistrantName("");
-    setEnrollError("");
+  // Admin direct enroll (no certificate needed)
+  const handleAdminEnroll = async () => {
+    setEnrollLoading(true); setEnrollError("");
+    try {
+      await api.post("/courses/" + courseId + "/admin-enroll");
+      setEnrollStep("success");
+      setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2000);
+    } catch (err) { setEnrollError(err instanceof Error ? err.message : "Enrollment failed."); }
+    finally { setEnrollLoading(false); }
   };
+
+  const resetModal = () => { setEnrollStep("certificate"); setCertificateId(""); setOtp(""); setVerificationKey(""); setMaskedEmail(""); setRegistrantName(""); setEnrollError(""); };
 
   return (
     <div>
       <button onClick={() => navigate("/catalog")} className="flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer mb-5 transition-colors">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        Back to catalog
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>Back to catalog
       </button>
 
       <div className="grid grid-cols-[1fr_360px] gap-6">
         <div className="flex flex-col gap-5">
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            {thumbnailSrc ? (
-              <div className="h-56 overflow-hidden"><img src={thumbnailSrc} alt={course.title} className="w-full h-full object-cover" /></div>
-            ) : (
-              <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}><span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span></div>
-            )}
+            {thumbnailSrc ? <div className="h-56 overflow-hidden"><img src={thumbnailSrc} alt={course.title} className="w-full h-full object-cover" /></div>
+            : <div className={`h-44 ${course.thumbnailColor || "bg-brand-navy"} flex items-center justify-center`}><span className="text-white/15 text-[80px] font-bold tracking-wider">{course.thumbnailCode}</span></div>}
             <div className="p-6">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[11px] font-medium text-brand-teal uppercase tracking-wider">{course.category}</span>
@@ -189,12 +183,6 @@ export default function CourseDetailPage() {
                   <div className="mt-2">
                     <div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{access.enrollment.progress}%</span></div>
                     <ProgressBar value={access.enrollment.progress} height="h-[5px]" />
-                    {access.enrollment.courseAccessId && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Certificate ID</div>
-                        <div className="text-[13px] font-mono text-gray-600">{access.enrollment.courseAccessId}</div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -204,7 +192,7 @@ export default function CourseDetailPage() {
                   Enroll in Course
                 </button>
                 <p className="text-[12px] text-gray-400 text-center leading-relaxed">
-                  Enter your course certificate ID to verify enrollment eligibility.
+                  {isAdmin ? "As admin, you can enroll directly." : "Enter your course certificate ID to verify enrollment eligibility."}
                 </p>
               </div>
             )}
@@ -225,78 +213,68 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      {/* Enrollment Modal — 2 steps */}
+      {/* Enrollment Modal */}
       {showEnrollModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => { setShowEnrollModal(false); resetModal(); }}>
           <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
 
-            {/* Step 1: Certificate ID */}
-            {enrollStep === "certificate" && (
+            {/* Admin: Direct enroll */}
+            {isAdmin && enrollStep === "certificate" && (
+              <div>
+                <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
+                <p className="text-[13px] text-gray-500 mb-5">As admin, you can enroll directly without a certificate ID.</p>
+                {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
+                <button onClick={handleAdminEnroll} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
+                  {enrollLoading ? "Enrolling..." : "Enroll Now"}
+                </button>
+                <div className="text-center mt-3">
+                  <button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Student: Certificate ID */}
+            {!isAdmin && enrollStep === "certificate" && (
               <div>
                 <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
                 <p className="text-[13px] text-gray-500 mb-5">Enter your course certificate ID to verify your eligibility. A verification code will be sent to your registered email.</p>
-
                 {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
-
                 <div>
                   <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Course Certificate ID</label>
                   <input type="text" value={certificateId} onChange={e => setCertificateId(e.target.value.toUpperCase())} placeholder="e.g. GoGMI-CTMG2026-0001" onKeyDown={e => { if (e.key === "Enter") handleVerifyCertificate(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-wide" />
                 </div>
-
                 <div className="flex gap-3 mt-5">
                   <button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
-                  <button onClick={handleVerifyCertificate} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
-                    {enrollLoading ? "Verifying..." : "Verify"}
-                  </button>
+                  <button onClick={handleVerifyCertificate} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>{enrollLoading ? "Verifying..." : "Verify"}</button>
                 </div>
-
                 <p className="text-[11.5px] text-gray-400 text-center mt-4">Don't have a certificate ID? Contact GoGMI at info@gogmi.org.gh</p>
               </div>
             )}
 
-            {/* Step 2: OTP verification */}
+            {/* OTP */}
             {enrollStep === "otp" && (
               <div>
-                <button onClick={() => { setEnrollStep("certificate"); setEnrollError(""); setOtp(""); }} className="flex items-center gap-1 text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer mb-4">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-                  Back
-                </button>
-
-                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3F" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,7 12,13 2,7" /></svg>
-                </div>
-
+                <button onClick={() => { setEnrollStep("certificate"); setEnrollError(""); setOtp(""); }} className="flex items-center gap-1 text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer mb-4"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>Back</button>
+                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3F" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,7 12,13 2,7" /></svg></div>
                 <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Verify Your Identity</h2>
-                <p className="text-[13px] text-gray-500 mb-1">
-                  Certificate verified for <span className="font-medium text-gray-700">{registrantName}</span>.
-                </p>
-                <p className="text-[13px] text-gray-500 mb-5">
-                  A 6-digit verification code has been sent to <span className="font-medium text-gray-700">{maskedEmail}</span>.
-                </p>
-
+                <p className="text-[13px] text-gray-500 mb-1">Certificate verified for <span className="font-medium text-gray-700">{registrantName}</span>.</p>
+                <p className="text-[13px] text-gray-500 mb-5">A 6-digit code has been sent to <span className="font-medium text-gray-700">{maskedEmail}</span>.</p>
                 {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
-
                 <div>
                   <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Verification Code</label>
-                  <input type="text" value={otp} onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 6); setOtp(v); }} placeholder="000000" maxLength={6} onKeyDown={e => { if (e.key === "Enter") handleVerifyOtp(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-3 text-[20px] text-center text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-[12px]" />
+                  <input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" maxLength={6} onKeyDown={e => { if (e.key === "Enter") handleVerifyOtp(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-3 text-[20px] text-center text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-[12px]" />
                 </div>
-
-                <button onClick={handleVerifyOtp} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors mt-5 ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
-                  {enrollLoading ? "Verifying..." : "Complete Enrollment"}
-                </button>
-
-                <p className="text-[11.5px] text-gray-400 text-center mt-4">Code expires in 10 minutes. Check your spam folder if you don't see it.</p>
+                <button onClick={handleVerifyOtp} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors mt-5 ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>{enrollLoading ? "Verifying..." : "Complete Enrollment"}</button>
+                <p className="text-[11.5px] text-gray-400 text-center mt-4">Code expires in 10 minutes.</p>
               </div>
             )}
 
-            {/* Step 3: Success */}
+            {/* Success */}
             {enrollStep === "success" && (
               <div className="text-center py-4">
-                <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-                </div>
+                <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg></div>
                 <h2 className="text-[20px] font-semibold text-gray-800 mb-2">Enrollment Complete!</h2>
-                <p className="text-[14px] text-gray-500">You now have access to {course.title}. Redirecting to your course...</p>
+                <p className="text-[14px] text-gray-500">You now have access to {course.title}.</p>
               </div>
             )}
           </div>
