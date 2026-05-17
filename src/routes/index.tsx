@@ -10,7 +10,6 @@ const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../pages/auth/ResetPasswordPage"));
-
 const DashboardPage = lazy(() => import("../pages/student/DashboardPage"));
 const MyCoursesPage = lazy(() => import("../pages/student/MyCoursesPage"));
 const CatalogPage = lazy(() => import("../pages/student/CatalogPage"));
@@ -22,7 +21,6 @@ const DiscussionsPage = lazy(() => import("../pages/student/DiscussionsPage"));
 const MessagesPage = lazy(() => import("../pages/student/MessagesPage"));
 const SettingsPage = lazy(() => import("../pages/student/SettingsPage"));
 const HelpPage = lazy(() => import("../pages/student/HelpPage"));
-
 const AdminOverviewPage = lazy(() => import("../pages/admin/AdminOverviewPage"));
 const AdminUsersPage = lazy(() => import("../pages/admin/AdminUsersPage"));
 const AdminCoursesPage = lazy(() => import("../pages/admin/AdminCoursesPage"));
@@ -30,8 +28,6 @@ const AdminEnrollmentsPage = lazy(() => import("../pages/admin/AdminEnrollmentsP
 const AdminPaymentsPage = lazy(() => import("../pages/admin/AdminPaymentsPage"));
 const AdminAnnouncementsPage = lazy(() => import("../pages/admin/AdminAnnouncementsPage"));
 const AdminReportsPage = lazy(() => import("../pages/admin/AdminReportsPage"));
-const AdminFilesPage = lazy(() => import("../pages/admin/AdminFilesPage"));
-
 const InstructorDashboardPage = lazy(() => import("../pages/instructor/InstructorDashboardPage"));
 const InstructorCoursesPage = lazy(() => import("../pages/instructor/InstructorCoursesPage"));
 const InstructorCourseManagePage = lazy(() => import("../pages/instructor/InstructorCourseManagePage"));
@@ -41,10 +37,9 @@ const InstructorGradingPage = lazy(() => import("../pages/instructor/InstructorG
 const InstructorDiscussionsPage = lazy(() => import("../pages/instructor/InstructorDiscussionsPage"));
 const InstructorAnnouncementsPage = lazy(() => import("../pages/instructor/InstructorAnnouncementsPage"));
 const InstructorAnalyticsPage = lazy(() => import("../pages/instructor/InstructorAnalyticsPage"));
+const InstructorQuestionEditorPage = lazy(() => import("../pages/instructor/InstructorQuestionEditorPage"));
 
-function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
-}
+function Lazy({ children }: { children: React.ReactNode }) { return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>; }
 function RootLayout() { return <AuthProvider><Outlet /></AuthProvider>; }
 
 const routes: RouteObject[] = [{
@@ -79,6 +74,7 @@ const routes: RouteObject[] = [{
         { path: "courses/:courseId", element: <Lazy><InstructorCourseManagePage /></Lazy> },
         { path: "students", element: <Lazy><InstructorStudentsPage /></Lazy> },
         { path: "assessments", element: <Lazy><InstructorAssessmentsPage /></Lazy> },
+        { path: "assessments/:assessmentId/questions", element: <Lazy><InstructorQuestionEditorPage /></Lazy> },
         { path: "grading", element: <Lazy><InstructorGradingPage /></Lazy> },
         { path: "discussions", element: <Lazy><InstructorDiscussionsPage /></Lazy> },
         { path: "announcements", element: <Lazy><InstructorAnnouncementsPage /></Lazy> },
@@ -94,7 +90,6 @@ const routes: RouteObject[] = [{
         { path: "enrollments", element: <Lazy><AdminEnrollmentsPage /></Lazy> },
         { path: "payments", element: <Lazy><AdminPaymentsPage /></Lazy> },
         { path: "announcements", element: <Lazy><AdminAnnouncementsPage /></Lazy> },
-        { path: "files", element: <Lazy><AdminFilesPage /></Lazy> },
         { path: "reports", element: <Lazy><AdminReportsPage /></Lazy> },
       ]}],
     },
