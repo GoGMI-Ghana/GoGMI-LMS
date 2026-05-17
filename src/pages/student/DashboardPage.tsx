@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import { LoadingSpinner } from "../../components/common";
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
+
 interface Course {
   id: string; title: string; subtitle: string; description: string; category: string;
   level: string; duration: string; thumbnailCode: string; thumbnailColor: string;
@@ -66,7 +66,7 @@ export default function CatalogPage() {
               <div key={course.id} onClick={() => navigate("/catalog/" + course.id)} className="bg-white border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-gray-300 hover:shadow-md transition-all flex flex-col">
                 <div className="relative">
                   {course.thumbnailImage ? (
-                    <div className="h-44 overflow-hidden"><img src={API_BASE + course.thumbnailImage} alt={course.title} className="w-full h-full object-cover" /></div>
+                    <div className="h-44 overflow-hidden"><img src={course.thumbnailImage} alt={course.title} className="w-full h-full object-cover" /></div>
                   ) : (
                     <div className={`h-44 ${course.thumbnailColor} flex items-center justify-center`}><span className="text-white/15 text-[64px] font-bold tracking-wider">{course.thumbnailCode}</span></div>
                   )}
