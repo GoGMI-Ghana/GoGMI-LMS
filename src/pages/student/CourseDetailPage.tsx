@@ -27,7 +27,6 @@ export default function CourseDetailPage() {
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "syllabus" | "facilitators">("overview");
 
-  // Enrollment
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [enrollStep, setEnrollStep] = useState<"certificate" | "otp" | "success">("certificate");
   const [certificateId, setCertificateId] = useState("");
@@ -43,9 +42,13 @@ export default function CourseDetailPage() {
 
   const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
   const isAdmin = user?.role === "ADMIN";
-
-  // Thumbnail: use local path (served from frontend public/)
   const thumbnailSrc = course.thumbnailImage || null;
+
+  // Extract Zoom link from format field
+  const zoomMatch = course.format?.match(/https:\/\/us\d+web\.zoom\.us\/j\/\d+[^\s|]*/);
+  const zoomLink = zoomMatch ? zoomMatch[0] : null;
+  const meetingIdMatch = course.format?.match(/Meeting ID:\s*([\d\s]+)/);
+  const passcodeMatch = course.format?.match(/Passcode:\s*(\w+)/);
 
   const handleVerifyCertificate = async () => {
     setEnrollError("");
@@ -53,10 +56,7 @@ export default function CourseDetailPage() {
     setEnrollLoading(true);
     try {
       const result = await api.post<{ verificationKey: string; registrantName: string; maskedEmail: string }>("/courses/" + courseId + "/verify", { certificateId: certificateId.trim() });
-      setVerificationKey(result.verificationKey);
-      setMaskedEmail(result.maskedEmail);
-      setRegistrantName(result.registrantName);
-      setEnrollStep("otp");
+      setVerificationKey(result.verificationKey); setMaskedEmail(result.maskedEmail); setRegistrantName(result.registrantName); setEnrollStep("otp");
     } catch (err) { setEnrollError(err instanceof Error ? err.message : "Verification failed."); }
     finally { setEnrollLoading(false); }
   };
@@ -67,19 +67,16 @@ export default function CourseDetailPage() {
     setEnrollLoading(true);
     try {
       await api.post("/courses/" + courseId + "/enroll", { verificationKey, otp });
-      setEnrollStep("success");
-      setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2500);
+      setEnrollStep("success"); setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2500);
     } catch (err) { setEnrollError(err instanceof Error ? err.message : "Verification failed."); }
     finally { setEnrollLoading(false); }
   };
 
-  // Admin direct enroll (no certificate needed)
   const handleAdminEnroll = async () => {
     setEnrollLoading(true); setEnrollError("");
     try {
       await api.post("/courses/" + courseId + "/admin-enroll");
-      setEnrollStep("success");
-      setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2000);
+      setEnrollStep("success"); setTimeout(() => { setShowEnrollModal(false); resetModal(); refetchAccess(); }, 2000);
     } catch (err) { setEnrollError(err instanceof Error ? err.message : "Enrollment failed."); }
     finally { setEnrollLoading(false); }
   };
@@ -100,8 +97,7 @@ export default function CourseDetailPage() {
             <div className="p-6">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[11px] font-medium text-brand-teal uppercase tracking-wider">{course.category}</span>
-                <span className="text-gray-300">·</span>
-                <span className="text-[11px] text-gray-500">{course.level}</span>
+                <span className="text-gray-300">·</span><span className="text-[11px] text-gray-500">{course.level}</span>
                 {course.featured && <span className="ml-2 bg-brand-amber-light text-brand-amber text-[10px] font-semibold px-2 py-0.5 rounded">Featured</span>}
               </div>
               <h1 className="text-[22px] font-semibold text-gray-800 mb-1 leading-tight">{course.title}</h1>
@@ -111,6 +107,29 @@ export default function CourseDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Zoom banner for enrolled students */}
+          {access?.hasAccess && zoomLink && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14" /><rect x="1" y="6" width="14" height="12" rx="2" ry="2" /></svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-[15px] font-semibold text-gray-800 mb-1">Join Live Session</h3>
+                  <p className="text-[13px] text-gray-600 mb-3">Sessions run every weekday. Click below to join the Zoom meeting.</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    {meetingIdMatch && <span className="text-[12px] text-gray-500">Meeting ID: <span className="font-mono font-medium text-gray-700">{meetingIdMatch[1].trim()}</span></span>}
+                    {passcodeMatch && <span className="text-[12px] text-gray-500">Passcode: <span className="font-mono font-medium text-gray-700">{passcodeMatch[1]}</span></span>}
+                  </div>
+                  <a href={zoomLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-blue-600 text-white rounded-md px-5 py-2.5 text-[13px] font-medium hover:bg-blue-700 transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14" /><rect x="1" y="6" width="14" height="12" rx="2" ry="2" /></svg>
+                    Join Zoom Meeting
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="flex border-b border-gray-200">
@@ -124,7 +143,6 @@ export default function CourseDetailPage() {
                   <h2 className="text-[15px] font-semibold text-gray-800 mb-3">About this course</h2>
                   <p className="text-[14px] text-gray-600 leading-relaxed mb-5">{course.description}</p>
                   {course.targetGroup && <div className="mb-5"><h3 className="text-[13px] font-semibold text-gray-800 mb-2">Who is this for</h3><p className="text-[13px] text-gray-500 leading-relaxed">{course.targetGroup}</p></div>}
-                  {course.format && <div className="mb-5"><h3 className="text-[13px] font-semibold text-gray-800 mb-2">Format & Delivery</h3><p className="text-[13px] text-gray-500 leading-relaxed">{course.format}</p></div>}
                   {course.outcomes.length > 0 && (
                     <div><h3 className="text-[13px] font-semibold text-gray-800 mb-2">Expected Outcomes</h3><div className="flex flex-col gap-2">{course.outcomes.map((o, i) => (
                       <div key={i} className="flex items-start gap-2.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-brand-teal shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12" /></svg><span className="text-[13px] text-gray-600">{o}</span></div>
@@ -171,29 +189,37 @@ export default function CourseDetailPage() {
         {/* Sidebar */}
         <div className="flex flex-col gap-5">
           <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-20">
-            <div className="text-center mb-1">
-              <span className="text-[28px] font-semibold text-gray-800">{course.currency} {course.price.toLocaleString()}</span>
-            </div>
-            <p className="text-[11.5px] text-gray-400 text-center mb-4">GHS 350 (Members) · USD 450 (Non-members)</p>
-
             {access?.hasAccess ? (
               <div>
-                <button onClick={() => { setActiveTab("syllabus"); window.scrollTo({ top: 400, behavior: "smooth" }); }} className="w-full bg-brand-teal text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-teal/90 transition-colors mb-3">Continue Learning</button>
+                {zoomLink ? (
+                  <a href={zoomLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white rounded-md py-3 text-[14px] font-medium hover:bg-blue-700 transition-colors mb-3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14" /><rect x="1" y="6" width="14" height="12" rx="2" ry="2" /></svg>
+                    Join Live Session
+                  </a>
+                ) : (
+                  <button onClick={() => setActiveTab("syllabus")} className="w-full bg-brand-teal text-white rounded-md py-3 text-[14px] font-medium cursor-pointer hover:bg-brand-teal/90 transition-colors mb-3">Continue Learning</button>
+                )}
                 {access.enrollment && (
                   <div className="mt-2">
                     <div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{access.enrollment.progress}%</span></div>
                     <ProgressBar value={access.enrollment.progress} height="h-[5px]" />
                   </div>
                 )}
+                {zoomLink && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="text-[12px] text-gray-500 mb-1">Meeting ID</div>
+                    <div className="text-[14px] font-mono text-gray-800 mb-2">{meetingIdMatch ? meetingIdMatch[1].trim() : "—"}</div>
+                    <div className="text-[12px] text-gray-500 mb-1">Passcode</div>
+                    <div className="text-[14px] font-mono text-gray-800">{passcodeMatch ? passcodeMatch[1] : "—"}</div>
+                  </div>
+                )}
               </div>
             ) : (
               <div>
-                <button onClick={() => { resetModal(); setShowEnrollModal(true); }} className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-2">
-                  Enroll in Course
-                </button>
-                <p className="text-[12px] text-gray-400 text-center leading-relaxed">
-                  {isAdmin ? "As admin, you can enroll directly." : "Enter your course certificate ID to verify enrollment eligibility."}
-                </p>
+                <div className="text-center mb-1"><span className="text-[28px] font-semibold text-gray-800">{course.currency} {course.price.toLocaleString()}</span></div>
+                <p className="text-[11.5px] text-gray-400 text-center mb-4">GHS 350 (Members) · USD 450 (Non-members)</p>
+                <button onClick={() => { resetModal(); setShowEnrollModal(true); }} className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-2">Enroll in Course</button>
+                <p className="text-[12px] text-gray-400 text-center leading-relaxed">{isAdmin ? "As admin, you can enroll directly." : "Enter your course certificate ID to verify enrollment eligibility."}</p>
               </div>
             )}
 
@@ -217,41 +243,25 @@ export default function CourseDetailPage() {
       {showEnrollModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => { setShowEnrollModal(false); resetModal(); }}>
           <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-
-            {/* Admin: Direct enroll */}
             {isAdmin && enrollStep === "certificate" && (
               <div>
                 <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
-                <p className="text-[13px] text-gray-500 mb-5">As admin, you can enroll directly without a certificate ID.</p>
+                <p className="text-[13px] text-gray-500 mb-5">As admin, you can enroll directly.</p>
                 {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
-                <button onClick={handleAdminEnroll} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>
-                  {enrollLoading ? "Enrolling..." : "Enroll Now"}
-                </button>
-                <div className="text-center mt-3">
-                  <button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
-                </div>
+                <button onClick={handleAdminEnroll} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>{enrollLoading ? "Enrolling..." : "Enroll Now"}</button>
+                <div className="text-center mt-3"><button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button></div>
               </div>
             )}
-
-            {/* Student: Certificate ID */}
             {!isAdmin && enrollStep === "certificate" && (
               <div>
                 <h2 className="text-[18px] font-semibold text-gray-800 mb-1">Enroll in {course.title}</h2>
-                <p className="text-[13px] text-gray-500 mb-5">Enter your course certificate ID to verify your eligibility. A verification code will be sent to your registered email.</p>
+                <p className="text-[13px] text-gray-500 mb-5">Enter your course certificate ID to verify your eligibility.</p>
                 {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Course Certificate ID</label>
-                  <input type="text" value={certificateId} onChange={e => setCertificateId(e.target.value.toUpperCase())} placeholder="e.g. GoGMI-CTMG2026-0001" onKeyDown={e => { if (e.key === "Enter") handleVerifyCertificate(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-wide" />
-                </div>
-                <div className="flex gap-3 mt-5">
-                  <button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
-                  <button onClick={handleVerifyCertificate} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>{enrollLoading ? "Verifying..." : "Verify"}</button>
-                </div>
+                <div><label className="block text-[13px] font-medium text-gray-700 mb-1.5">Course Certificate ID</label><input type="text" value={certificateId} onChange={e => setCertificateId(e.target.value.toUpperCase())} placeholder="e.g. GoGMI-CTMG2026-0001" onKeyDown={e => { if (e.key === "Enter") handleVerifyCertificate(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-wide" /></div>
+                <div className="flex gap-3 mt-5"><button onClick={() => { setShowEnrollModal(false); resetModal(); }} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button><button onClick={handleVerifyCertificate} disabled={enrollLoading} className={`flex-1 rounded-md py-2.5 text-[13px] font-medium text-white cursor-pointer transition-colors ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>{enrollLoading ? "Verifying..." : "Verify"}</button></div>
                 <p className="text-[11.5px] text-gray-400 text-center mt-4">Don't have a certificate ID? Contact GoGMI at info@gogmi.org.gh</p>
               </div>
             )}
-
-            {/* OTP */}
             {enrollStep === "otp" && (
               <div>
                 <button onClick={() => { setEnrollStep("certificate"); setEnrollError(""); setOtp(""); }} className="flex items-center gap-1 text-[13px] text-gray-500 hover:text-gray-700 cursor-pointer mb-4"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>Back</button>
@@ -260,16 +270,11 @@ export default function CourseDetailPage() {
                 <p className="text-[13px] text-gray-500 mb-1">Certificate verified for <span className="font-medium text-gray-700">{registrantName}</span>.</p>
                 <p className="text-[13px] text-gray-500 mb-5">A 6-digit code has been sent to <span className="font-medium text-gray-700">{maskedEmail}</span>.</p>
                 {enrollError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{enrollError}</p></div>}
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Verification Code</label>
-                  <input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" maxLength={6} onKeyDown={e => { if (e.key === "Enter") handleVerifyOtp(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-3 text-[20px] text-center text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-[12px]" />
-                </div>
+                <div><label className="block text-[13px] font-medium text-gray-700 mb-1.5">Verification Code</label><input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" maxLength={6} onKeyDown={e => { if (e.key === "Enter") handleVerifyOtp(); }} className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-3 text-[20px] text-center text-gray-800 outline-none placeholder:text-gray-300 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors font-mono tracking-[12px]" /></div>
                 <button onClick={handleVerifyOtp} disabled={enrollLoading} className={`w-full rounded-md py-2.5 text-[14px] font-medium text-white cursor-pointer transition-colors mt-5 ${enrollLoading ? "bg-brand-navy-muted" : "bg-brand-navy hover:bg-brand-navy-light"}`}>{enrollLoading ? "Verifying..." : "Complete Enrollment"}</button>
                 <p className="text-[11.5px] text-gray-400 text-center mt-4">Code expires in 10 minutes.</p>
               </div>
             )}
-
-            {/* Success */}
             {enrollStep === "success" && (
               <div className="text-center py-4">
                 <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg></div>
