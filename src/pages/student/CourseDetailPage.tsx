@@ -174,7 +174,7 @@ export default function CourseDetailPage() {
             <div className="text-center mb-1">
               <span className="text-[28px] font-semibold text-gray-800">{course.currency} {course.price.toLocaleString()}</span>
             </div>
-            <p className="text-[11.5px] text-gray-400 text-center mb-4">GHS 350 (Members) · GHS 450 (Non-members)</p>
+            <p className="text-[11.5px] text-gray-400 text-center mb-4">GHS 350 (Members) · USD 450 (Non-members)</p>
 
             {access?.hasAccess ? (
               <div>
