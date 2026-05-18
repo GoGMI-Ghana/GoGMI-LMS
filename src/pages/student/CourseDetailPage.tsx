@@ -178,7 +178,7 @@ export default function CourseDetailPage() {
 
             {access?.hasAccess ? (
               <div>
-                <button className="w-full bg-brand-teal text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-teal/90 transition-colors mb-3">Continue Learning</button>
+                <button onClick={() => { setActiveTab("syllabus"); window.scrollTo({ top: 400, behavior: "smooth" }); }} className="w-full bg-brand-teal text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-teal/90 transition-colors mb-3">Continue Learning</button>
                 {access.enrollment && (
                   <div className="mt-2">
                     <div className="flex justify-between text-[12.5px] mb-1.5"><span className="text-gray-500">Your progress</span><span className="font-semibold text-gray-700">{access.enrollment.progress}%</span></div>
