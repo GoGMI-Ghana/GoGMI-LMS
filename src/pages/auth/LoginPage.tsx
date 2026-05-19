@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   const from = (location.state as { from?: string })?.from;
   if (isAuthenticated && user) {
-    const roleRoute: Record<string, string> = { ADMIN: "/admin", INSTRUCTOR: "/instructor", STUDENT: "/dashboard" };
+    const roleRoute: Record<string, string> = { ADMIN: "/admin", FACILITATOR: "/instructor", STUDENT: "/dashboard" };
     return <Navigate to={from || roleRoute[user.role] || "/dashboard"} replace />;
   }
 
@@ -51,9 +51,9 @@ export default function LoginPage() {
             <p className="text-white/60 text-[14.5px] leading-relaxed max-w-sm">Access professional maritime courses, earn certifications, and track your CPD points — all in one platform.</p>
           </div>
           <div className="flex gap-8">
-            <div><div className="text-white text-[22px] font-semibold">12+</div><div className="text-white/50 text-[12px]">Courses</div></div>
-            <div><div className="text-white text-[22px] font-semibold">2,000+</div><div className="text-white/50 text-[12px]">Learners</div></div>
-            <div><div className="text-white text-[22px] font-semibold">15+</div><div className="text-white/50 text-[12px]">Experts</div></div>
+            <div><div className="text-white text-[22px] font-semibold">2+</div><div className="text-white/50 text-[12px]">Courses</div></div>
+            <div><div className="text-white text-[22px] font-semibold">20+</div><div className="text-white/50 text-[12px]">Learners</div></div>
+            <div><div className="text-white text-[22px] font-semibold">10+</div><div className="text-white/50 text-[12px]">Experts</div></div>
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function LoginPage() {
           {/* Step 1: Credentials */}
           {step === "credentials" && (
             <div onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}>
-              <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome back</h2>
+              <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome to the Learning Management System platform of GoGMI.</h2>
               <p className="text-[14px] text-gray-500 mb-8">Sign in to continue your learning.</p>
               {error && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-5"><p className="text-[13px] text-red-700">{error}</p></div>}
               <div className="flex flex-col gap-4">
