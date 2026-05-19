@@ -10,7 +10,7 @@ interface Student { id: string; firstName: string; lastName: string; email: stri
 interface Assessment { id: string; title: string; type: string; dueDate: string | null; maxScore: number; submissions: number; totalStudents: number; avgScore: number | null; pendingCount: number; }
 interface CourseDetail {
   id: string; title: string; subtitle: string; category: string; level: string; duration: string; published: boolean; price: number;
-  modules: Module[]; students: Student[]; assessments: Assessment[];
+  format: string; modules: Module[]; students: Student[]; assessments: Assessment[];
 }
 
 export default function InstructorCourseManagePage() {
@@ -98,6 +98,37 @@ export default function InstructorCourseManagePage() {
           <p className="text-[14px] text-gray-500">{course.modules.length} modules · {totalSessions} sessions · {course.students.length} students</p>
         </div>
       </div>
+
+
+
+      {/* Zoom Link Banner */}
+      {course.format && course.format.includes("zoom.us") && (() => {
+        const zm = course.format.match(/https:\/\/us\d+web\.zoom\.us\/j\/\d+[^\s|]*/);
+        const mid = course.format.match(/Meeting ID:\s*([\d\s]+)/);
+        const pc = course.format.match(/Passcode:\s*(\w+)/);
+        return zm ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-5 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14" /><rect x="1" y="6" width="14" height="12" rx="2" ry="2" /></svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[15px] font-semibold text-gray-800 mb-1">Live Session — Zoom</h3>
+              <div className="flex items-center gap-4 text-[13px] text-gray-600 mb-3">
+                {mid && <span>Meeting ID: <span className="font-mono font-medium">{mid[1].trim()}</span></span>}
+                {pc && <span>Passcode: <span className="font-mono font-medium">{pc[1]}</span></span>}
+              </div>
+              <a href={zm[0]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-blue-600 text-white rounded-md px-5 py-2.5 text-[13px] font-medium hover:bg-blue-700 transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14" /><rect x="1" y="6" width="14" height="12" rx="2" ry="2" /></svg>
+                Join Zoom Meeting
+              </a>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
+
+
+
 
       {successMsg && <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-green-700">{successMsg}</p></div>}
 
