@@ -144,7 +144,7 @@ export default function CourseDetailPage() {
                   <p className="text-[14px] text-gray-600 leading-relaxed mb-5">{course.description}</p>
                   {course.targetGroup && <div className="mb-5"><h3 className="text-[13px] font-semibold text-gray-800 mb-2">Who is this for</h3><p className="text-[13px] text-gray-500 leading-relaxed">{course.targetGroup}</p></div>}
                   {course.outcomes.length > 0 && (
-                    <div><h3 className="text-[13px] font-semibold text-gray-800 mb-2">Expected Outcomes</h3><div className="flex flex-col gap-2">{course.outcomes.map((o, i) => (
+                    <div><h3 className="text-[13px] font-semibold text-gray-800 mb-2">Objectives</h3><div className="flex flex-col gap-2">{course.outcomes.map((o, i) => (
                       <div key={i} className="flex items-start gap-2.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-brand-teal shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12" /></svg><span className="text-[13px] text-gray-600">{o}</span></div>
                     ))}</div></div>
                   )}
@@ -217,7 +217,7 @@ export default function CourseDetailPage() {
             ) : (
               <div>
                 <div className="text-center mb-1"><span className="text-[28px] font-semibold text-gray-800">{course.currency} {course.price.toLocaleString()}</span></div>
-                <p className="text-[11.5px] text-gray-400 text-center mb-4">GHS 350 (Members) · USD 450 (Non-members)</p>
+                <p className="text-[11.5px] text-gray-400 text-center mb-4">USD 350 (Members) · USD 450 (Non-members)</p>
                 <button onClick={() => { resetModal(); setShowEnrollModal(true); }} className="w-full bg-brand-navy text-white rounded-md py-2.5 text-[14px] font-medium cursor-pointer hover:bg-brand-navy-light transition-colors mb-2">Enroll in Course</button>
                 <p className="text-[12px] text-gray-400 text-center leading-relaxed">{isAdmin ? "As admin, you can enroll directly." : "Enter your course certificate ID to verify enrollment eligibility."}</p>
               </div>
