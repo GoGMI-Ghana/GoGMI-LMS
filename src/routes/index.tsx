@@ -6,6 +6,7 @@ import { AdminLayout } from "../components/admin";
 import { InstructorLayout } from "../components/instructor";
 import { ProtectedRoute, LoadingSpinner } from "../components/common";
 
+const CourseContentPage = lazy(() => import("../pages/student/CourseContentPage"));
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
@@ -64,6 +65,7 @@ const routes: RouteObject[] = [{
         { path: "messages", element: <Lazy><MessagesPage /></Lazy> },
         { path: "settings", element: <Lazy><SettingsPage /></Lazy> },
         { path: "help", element: <Lazy><HelpPage /></Lazy> },
+        { path: "courses/:courseId/content", element: <Lazy><CourseContentPage /></Lazy> },
       ]}],
     },
     {
