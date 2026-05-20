@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 opacity-[0.04]"><svg width="100%" height="100%"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" /></pattern></defs><rect width="100%" height="100%" fill="url(#grid)" /></svg></div>
         <div className="relative z-10 flex flex-col justify-between p-10 w-full">
           <div>
-            <div className="flex items-center gap-3 mb-16"><img src={gogmiLogo} alt="GoGMI" className="w-12 h-12 rounded-full object-cover border-2 border-white/20" /><div><div className="text-white text-[17px] font-semibold tracking-tight">GoGMI</div><div className="text-white/60 text-[11px] tracking-wide">Learning Platform</div></div></div>
+            <div className="flex items-center gap-3 mb-16"><img src={gogmiLogo} alt="GoGMI" className="w-12 h-12 rounded-full object-cover border-2 border-white/20" /><div><div className="text-white text-[17px] font-semibold tracking-tight">Gulf of Guinea Maritime Institute</div><div className="text-white/60 text-[11px] tracking-wide">Learning Platform</div></div></div>
             <h1 className="text-white text-[28px] font-semibold leading-tight mb-4">Advancing Maritime<br />Knowledge in the<br />Gulf of Guinea</h1>
             <p className="text-white/60 text-[14.5px] leading-relaxed max-w-sm">Access professional maritime courses, earn certifications, and track your CPD points — all in one platform.</p>
           </div>
@@ -65,7 +65,7 @@ export default function LoginPage() {
           {/* Step 1: Credentials */}
           {step === "credentials" && (
             <div onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}>
-              <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome to the Learning Management System platform of GoGMI.</h2>
+              <h2 className="text-[22px] font-semibold text-gray-800 mb-1">Welcome to the Learning Management System platform of Gulf of Guinea Maritime Institute.</h2>
               <p className="text-[14px] text-gray-500 mb-8">Sign in to continue your learning.</p>
               {error && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-5"><p className="text-[13px] text-red-700">{error}</p></div>}
               <div className="flex flex-col gap-4">
