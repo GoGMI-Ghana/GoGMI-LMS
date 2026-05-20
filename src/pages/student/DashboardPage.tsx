@@ -85,7 +85,7 @@ export default function DashboardPage() {
           {enrollments.length > 0 ? (
             <div className="flex flex-col gap-3">
               {enrollments.slice(0, 4).map(e => (
-                <div key={e.courseId} onClick={() => navigate("/catalog/" + e.courseId)} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-4 cursor-pointer hover:border-gray-300 transition-all">
+                <div key={e.courseId} onClick={() => navigate("/courses/" + e.courseId + "/content")} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-4 cursor-pointer hover:border-gray-300 transition-all">
                   {e.course.thumbnailImage ? (
                     <div className="w-20 h-16 rounded-md overflow-hidden shrink-0"><img src={e.course.thumbnailImage} alt="" className="w-full h-full object-cover" /></div>
                   ) : (
