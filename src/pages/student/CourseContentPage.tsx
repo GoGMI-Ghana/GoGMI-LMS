@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
-import { useAuth } from "../../contexts/AuthContext";
+
 import { ProgressBar, LoadingSpinner } from "../../components/common";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
@@ -22,7 +22,7 @@ function getYouTubeId(url: string): string | null {
 export default function CourseContentPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  
   const { data: course, isLoading } = useApi<Course>("/courses/" + courseId);
   const { data: access } = useApi<AccessCheck>("/courses/" + courseId + "/access");
 
