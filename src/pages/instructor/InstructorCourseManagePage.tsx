@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import { api } from "../../services/api";
 import { LoadingSpinner } from "../../components/common";
+import { getAccessToken } from "../../services/api";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
 
@@ -61,7 +62,8 @@ export default function InstructorCourseManagePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch(API_BASE + "/api/files/upload", { method: "POST", body: formData, credentials: "include" });
+      const token = getAccessToken();
+      const res = await fetch(API_BASE + "/api/files/upload", { method: "POST", body: formData, credentials: "include", headers: token ? { "Authorization": "Bearer " + token } : {} });
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
       setContentUrl(data.url);
