@@ -14,7 +14,7 @@ interface DashData { enrollments: Enrollment[]; }
 
 export default function AssessmentsPage() {
   const { data: dashData } = useApi<DashData>("/courses/dashboard/student");
-  const courseId = dashData?.enrollments?.[0]?.courseId;
+  const courseId = dashData?.enrollments?.[0]?.courseId || "crs_maritime_governance";
   const { data, isLoading, refetch } = useApi<AssessmentData>(courseId ? "/groups/my-assessments/" + courseId : "");
 
   const [submittingId, setSubmittingId] = useState<string | null>(null);
