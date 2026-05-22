@@ -71,7 +71,7 @@ export default function InstructorAssessmentsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => navigate("/instructor/assessments/" + a.id + "/questions")} className="border border-gray-200 rounded-md px-3.5 py-1.5 text-[12.5px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Questions</button>
+                  <button onClick={() => navigate("/instructor/grading")} className="border border-gray-200 rounded-md px-3.5 py-1.5 text-[12.5px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Submissions</button>
                   <button onClick={() => navigate("/instructor/grading")} className="border border-gray-200 rounded-md px-3.5 py-1.5 text-[12.5px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Grade</button>
                 </div>
               </div>
