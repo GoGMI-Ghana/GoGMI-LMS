@@ -18,7 +18,8 @@ function Icon({ svg }: { svg: string }) {
 }
 
 export default function InstructorSidebar() {
-  const { logout } = useAuth();
+  const { user , logout } = useAuth();     
+  // const { logout } → const { user, logout }
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-[#1a2332] flex flex-col z-50">
@@ -27,7 +28,7 @@ export default function InstructorSidebar() {
           <img src={gogmiLogo} alt="GoGMI" className="w-10 h-10 rounded-full object-cover" />
           <div>
             <div className="text-white text-[15px] font-semibold tracking-tight">GoGMI</div>
-            <div className="text-brand-teal text-[11px] tracking-wide">Instructor Portal</div>
+            <div className="text-brand-teal text-[11px] tracking-wide">Facilitator Portal</div>
           </div>
         </div>
       </div>
@@ -44,10 +45,10 @@ export default function InstructorSidebar() {
         <div className="flex-1" />
 
         <div className="border-t border-white/10 pt-3 mt-2 flex flex-col gap-0.5">
-          <NavLink to="/dashboard" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-white/5 hover:text-gray-300 transition-colors duration-150">
+          {user?.role === "ADMIN" && <NavLink to="/dashboard" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-white/5 hover:text-gray-300 transition-colors duration-150">
             <span className="shrink-0 opacity-70"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
             Back to LMS
-          </NavLink>
+          </NavLink>}
           <button onClick={logout} className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13.5px] text-left w-full text-gray-400 hover:bg-white/5 hover:text-gray-300 transition-colors duration-150 cursor-pointer mt-1">
             <span className="shrink-0 opacity-70"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
             Sign out
