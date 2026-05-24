@@ -165,7 +165,7 @@ export default function CourseContentPage() {
           {/* Active lesson header */}
           {activeLesson && (
             <div className="mb-4">
-              <div className="text-[12px] text-brand-teal font-medium uppercase tracking-wider mb-1">Module {activeModuleIdx + 1} · Session {activeLessonIdx + 1}</div>
+              <div className="text-[12px] text-brand-teal font-medium uppercase tracking-wider mb-1">{activeModule?.title.includes("Supplementary") ? "📚 Extra Reading" : "Module " + (activeModuleIdx + 1)} · Session {activeLessonIdx + 1}</div>
               <h1 className="text-[20px] font-semibold text-gray-800 mb-1">{activeLesson.title}</h1>
               <div className="text-[13px] text-gray-500">{activeLesson.facilitator} · {activeLesson.duration}</div>
             </div>
@@ -198,7 +198,7 @@ export default function CourseContentPage() {
             {course.modules.map((mod, mIdx) => (
               <div key={mod.id}>
                 <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                  <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Module {mIdx + 1}</div>
+                  <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">{mod.title.includes("Supplementary") || mod.title.includes("Additional") ? "📚 Extra" : "Module " + (mIdx + 1)}</div>
                   <div className="text-[13px] font-medium text-gray-800">{mod.title}</div>
                 </div>
                 {mod.lessons.map((lesson, lIdx) => {
