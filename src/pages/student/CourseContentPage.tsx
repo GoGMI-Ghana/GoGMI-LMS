@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import { api } from "../../services/api";
-import { getAccessToken } from "../../services/api";
+
 import { ProgressBar, LoadingSpinner } from "../../components/common";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:3001";
