@@ -21,14 +21,19 @@ export default function CourseContentPage() {
   const navigate = useNavigate();
   const { data: course, isLoading } = useApi<Course>("/courses/" + courseId);
   const { data: access, refetch: refetchAccess } = useApi<AccessCheck>("/courses/" + courseId + "/access");
-  const { data: fetchedCompletions } = useApi<string[]>("/courses/" + courseId + "/completions");
 
   const [activeModuleIdx, setActiveModuleIdx] = useState(0);
   const [activeLessonIdx, setActiveLessonIdx] = useState(0);
   const [marking, setMarking] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
-  const [localCompleted, setLocalCompleted] = useState<string[]>([]);
-  const [localRemoved, setLocalRemoved] = useState<string[]>([]);
+  const [completed, setCompleted] = useState<string[]>([]);
+  const [loadedCompletions, setLoadedCompletions] = useState(false);
+
+  // Load completions once
+  if (!loadedCompletions && courseId) {
+    setLoadedCompletions(true);
+    api.get<string[]>("/courses/" + courseId + "/completions").then(data => setCompleted(data)).catch(() => {});
+  }
 
   if (isLoading) return <LoadingSpinner />;
   if (!course) return <div className="bg-white border border-gray-200 rounded-lg py-16 flex flex-col items-center"><p className="text-gray-500">Course not found</p></div>;
@@ -44,7 +49,6 @@ export default function CourseContentPage() {
     );
   }
 
-  const completed = [...new Set([...(fetchedCompletions || []), ...localCompleted])].filter(id => !localRemoved.includes(id));
   const activeModule = course.modules[activeModuleIdx];
   const activeLesson = activeModule?.lessons[activeLessonIdx];
   const isLessonDone = activeLesson ? completed.includes(activeLesson.id) : false;
@@ -76,30 +80,24 @@ export default function CourseContentPage() {
   const handleMarkComplete = async () => {
     if (!activeLesson) return;
     setMarking(true);
-    setLocalCompleted(prev => [...prev, activeLesson.id]);
-    setLocalRemoved(prev => prev.filter(id => id !== activeLesson.id));
+    setCompleted(prev => [...prev, activeLesson.id]);
     try {
       const result = await api.post<{ progress: number; courseCompleted: boolean }>("/courses/lessons/" + activeLesson.id + "/complete");
       refetchAccess();
       if (result.courseCompleted) setShowComplete(true);
       else setTimeout(() => goNext(), 600);
-    } catch {
-      setLocalCompleted(prev => prev.filter(id => id !== activeLesson.id));
-    }
+    } catch { setCompleted(prev => prev.filter(id => id !== activeLesson.id)); }
     finally { setMarking(false); }
   };
 
   const handleUndoComplete = async () => {
     if (!activeLesson) return;
     setMarking(true);
-    setLocalRemoved(prev => [...prev, activeLesson.id]);
-    setLocalCompleted(prev => prev.filter(id => id !== activeLesson.id));
+    setCompleted(prev => prev.filter(id => id !== activeLesson.id));
     try {
       await api.delete("/courses/lessons/" + activeLesson.id + "/complete");
       refetchAccess();
-    } catch {
-      setLocalRemoved(prev => prev.filter(id => id !== activeLesson.id));
-    }
+    } catch { setCompleted(prev => [...prev, activeLesson.id]); }
     finally { setMarking(false); }
   };
 
@@ -110,7 +108,7 @@ export default function CourseContentPage() {
         <div className="bg-gray-50 border border-gray-200 rounded-lg py-16 flex flex-col items-center">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300 mb-3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <p className="text-[14px] text-gray-500 mb-1">No content available yet</p>
-          <p className="text-[12px] text-gray-400">The facilitator hasn't uploaded content for this session.</p>
+          <p className="text-[12px] text-gray-400">The facilitator has not uploaded content for this session.</p>
         </div>
       );
     }
@@ -249,7 +247,7 @@ export default function CourseContentPage() {
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <h2 className="text-[24px] font-bold text-gray-800 mb-2">Course Completed! 🎉</h2>
-            <p className="text-[14px] text-gray-500 mb-6">Congratulations! You've completed all sessions in {course.title}.</p>
+            <p className="text-[14px] text-gray-500 mb-6">Congratulations! You have completed all sessions in {course.title}.</p>
             <div className="flex gap-3">
               <button onClick={() => { setShowComplete(false); navigate("/certificates"); }} className="flex-1 bg-brand-navy text-white rounded-md py-2.5 text-[13px] font-medium cursor-pointer hover:bg-brand-navy-light">View Certificates</button>
               <button onClick={() => setShowComplete(false)} className="flex-1 border border-gray-200 rounded-md py-2.5 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50">Stay Here</button>
