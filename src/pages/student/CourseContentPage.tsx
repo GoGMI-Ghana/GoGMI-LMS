@@ -115,7 +115,8 @@ export default function CourseContentPage() {
     if (activeLesson.contentType === "video") {
       const ytId = getYouTubeId(activeLesson.contentUrl);
       if (ytId) return <div className="bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "16/9" }}><iframe src={"https://www.youtube.com/embed/" + ytId + "?rel=0"} className="w-full h-full" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>;
-      return <div className="bg-gray-50 border border-gray-200 rounded-lg p-6"><a href={activeLesson.contentUrl} target="_blank" rel="noopener noreferrer" className="text-brand-teal hover:underline">Open video</a></div>;
+      const videoUrl = activeLesson.contentUrl.startsWith("/api/files/") ? API_BASE + activeLesson.contentUrl : activeLesson.contentUrl;
+      return <div className="bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "16/9" }}><video src={videoUrl} controls className="w-full h-full" /></div>;
     }
     if (activeLesson.contentType === "document" || activeLesson.contentType === "slides") {
       const fileUrl = activeLesson.contentUrl.startsWith("/api/files/") ? API_BASE + activeLesson.contentUrl : activeLesson.contentUrl;
