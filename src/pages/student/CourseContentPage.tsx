@@ -238,6 +238,12 @@ export default function CourseContentPage() {
               </div>
             ))}
           </div>
+          <div className="p-4 border-t border-gray-200">
+            <button onClick={() => navigate("/evaluation")} className="w-full bg-amber-50 border border-amber-200 rounded-md py-3 px-4 flex items-center gap-3 cursor-pointer hover:bg-amber-100 transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <div className="text-left"><div className="text-[13px] font-semibold text-amber-800">Course Evaluation Form</div><div className="text-[11px] text-amber-600">Required before certificate download</div></div>
+            </button>
+          </div>
         </div>
       </div>
 
