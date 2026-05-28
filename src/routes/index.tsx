@@ -22,6 +22,7 @@ const DiscussionsPage = lazy(() => import("../pages/student/DiscussionsPage"));
 const MessagesPage = lazy(() => import("../pages/student/MessagesPage"));
 const SettingsPage = lazy(() => import("../pages/student/SettingsPage"));
 const HelpPage = lazy(() => import("../pages/student/HelpPage"));
+const EvaluationPage = lazy(() => import("../pages/student/EvaluationPage"));
 const AdminOverviewPage = lazy(() => import("../pages/admin/AdminOverviewPage"));
 const AdminUsersPage = lazy(() => import("../pages/admin/AdminUsersPage"));
 const AdminCoursesPage = lazy(() => import("../pages/admin/AdminCoursesPage"));
@@ -65,6 +66,7 @@ const routes: RouteObject[] = [{
         { path: "messages", element: <Lazy><MessagesPage /></Lazy> },
         { path: "settings", element: <Lazy><SettingsPage /></Lazy> },
         { path: "help", element: <Lazy><HelpPage /></Lazy> },
+        { path: "evaluation", element: <Lazy><EvaluationPage /></Lazy> },
         { path: "courses/:courseId/content", element: <Lazy><CourseContentPage /></Lazy> },
       ]}],
     },
