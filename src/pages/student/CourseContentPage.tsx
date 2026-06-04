@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import { api } from "../../services/api";
@@ -27,13 +27,8 @@ export default function CourseContentPage() {
   const [marking, setMarking] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [completed, setCompleted] = useState<string[]>([]);
-  const [loadedCompletions, setLoadedCompletions] = useState(false);
-
-  // Load completions once
-  if (!loadedCompletions && courseId) {
-    setLoadedCompletions(true);
-    api.get<string[]>("/courses/" + courseId + "/completions").then(data => setCompleted(data)).catch(() => {});
-  }
+  const hasFetched = useRef(false);
+  useEffect(() => { if (courseId && !hasFetched.current) { hasFetched.current = true; api.get<string[]>("/courses/" + courseId + "/completions").then(data => { if (Array.isArray(data)) setCompleted(data); }).catch(() => {}); } }, [courseId]);
 
   if (isLoading) return <LoadingSpinner />;
   if (!course) return <div className="bg-white border border-gray-200 rounded-lg py-16 flex flex-col items-center"><p className="text-gray-500">Course not found</p></div>;
