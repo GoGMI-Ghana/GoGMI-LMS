@@ -7,12 +7,13 @@ import { ProgressBar, LoadingSpinner } from "../../components/common";
 
 interface Lesson { id: string; title: string; facilitator: string; duration: string; contentType: string | null; contentUrl: string | null; }
 interface Module { id: string; title: string; order: number; lessons: Lesson[]; }
+interface Facilitator { name: string; title: string; bio: string | null; email: string | null; phone: string | null; linkedIn: string | null; photo: string | null; }
 interface Course {
   id: string; title: string; subtitle: string; description: string; category: string;
   level: string; duration: string; thumbnailCode: string; thumbnailColor: string;
   thumbnailImage: string | null; price: number; currency: string; featured: boolean;
   format: string; targetGroup: string; students: number; tags: string[];
-  facilitators: { name: string; title: string }[];
+  facilitators: Facilitator[];
   outcomes: string[];
   modules: Module[];
 }
@@ -26,6 +27,7 @@ export default function CourseDetailPage() {
   const { data: access, refetch: refetchAccess } = useApi<AccessCheck>("/courses/" + courseId + "/access");
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "syllabus" | "facilitators">("overview");
+  const [selectedFacilitator, setSelectedFacilitator] = useState<Facilitator | null>(null);
 
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [enrollStep, setEnrollStep] = useState<"certificate" | "otp" | "success">("certificate");
@@ -174,11 +176,16 @@ export default function CourseDetailPage() {
               {activeTab === "facilitators" && (
                 <div>
                   <h2 className="text-[15px] font-semibold text-gray-800 mb-4">Course Facilitators</h2>
-                  <div className="flex flex-col gap-3">{course.facilitators.map((f, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-[12px] font-semibold text-gray-600">{f.name.split(" ").filter(n => n.length > 1 && !n.includes("(")).map(n => n[0]).join("").slice(0, 2)}</div>
-                      <div><div className="text-[14px] font-medium text-gray-800">{f.name}</div>{f.title && <div className="text-[12px] text-gray-500">{f.title}</div>}</div>
-                    </div>
+                  <div className="flex flex-col gap-1">{course.facilitators.map((f, i) => (
+                    <button key={i} onClick={() => setSelectedFacilitator(f)} className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-left w-full">
+                      {f.photo ? (
+                        <img src={f.photo} alt={f.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-[12px] font-semibold text-gray-600 shrink-0">{f.name.split(" ").filter(n => n.length > 1 && !n.includes("(")).map(n => n[0]).join("").slice(0, 2)}</div>
+                      )}
+                      <div className="flex-1 min-w-0"><div className="text-[14px] font-medium text-gray-800">{f.name}</div>{f.title && <div className="text-[12px] text-gray-500">{f.title}</div>}</div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-gray-300 shrink-0"><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
                   ))}</div>
                 </div>
               )}
@@ -280,6 +287,59 @@ export default function CourseDetailPage() {
                 <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg></div>
                 <h2 className="text-[20px] font-semibold text-gray-800 mb-2">Enrollment Complete!</h2>
                 <p className="text-[14px] text-gray-500">You now have access to {course.title}.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Facilitator Detail Modal */}
+      {selectedFacilitator && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setSelectedFacilitator(null)}>
+          <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-4 mb-4">
+              {selectedFacilitator.photo ? (
+                <img src={selectedFacilitator.photo} alt={selectedFacilitator.name} className="w-14 h-14 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-[15px] font-semibold text-gray-600 shrink-0">{selectedFacilitator.name.split(" ").filter(n => n.length > 1 && !n.includes("(")).map(n => n[0]).join("").slice(0, 2)}</div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-[17px] font-semibold text-gray-800 leading-tight">{selectedFacilitator.name}</h2>
+                {selectedFacilitator.title && <p className="text-[13px] text-gray-500 mt-0.5">{selectedFacilitator.title}</p>}
+              </div>
+              <button onClick={() => setSelectedFacilitator(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-[12px] font-semibold text-gray-800 uppercase tracking-wide mb-1.5">Bio</h3>
+              <p className="text-[13.5px] text-gray-600 leading-relaxed">{selectedFacilitator.bio || "No biography has been added for this facilitator yet."}</p>
+            </div>
+
+            {(selectedFacilitator.email || selectedFacilitator.phone || selectedFacilitator.linkedIn) && (
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-[12px] font-semibold text-gray-800 uppercase tracking-wide mb-2">Contact</h3>
+                <div className="flex flex-col gap-2">
+                  {selectedFacilitator.email && (
+                    <a href={`mailto:${selectedFacilitator.email}`} className="flex items-center gap-2.5 text-[13.5px] text-gray-600 hover:text-brand-teal transition-colors">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-gray-400 shrink-0"><path d="M4 4h16v16H4z" /><path d="m22 6-10 7L2 6" /></svg>
+                      {selectedFacilitator.email}
+                    </a>
+                  )}
+                  {selectedFacilitator.phone && (
+                    <a href={`tel:${selectedFacilitator.phone}`} className="flex items-center gap-2.5 text-[13.5px] text-gray-600 hover:text-brand-teal transition-colors">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-gray-400 shrink-0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                      {selectedFacilitator.phone}
+                    </a>
+                  )}
+                  {selectedFacilitator.linkedIn && (
+                    <a href={selectedFacilitator.linkedIn} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-[13.5px] text-gray-600 hover:text-brand-teal transition-colors">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-gray-400 shrink-0"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg>
+                      LinkedIn Profile
+                    </a>
+                  )}
+                </div>
               </div>
             )}
           </div>
