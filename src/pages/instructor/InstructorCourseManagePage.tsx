@@ -8,10 +8,11 @@ interface Lesson { id: string; title: string; facilitator: string; duration: str
 interface Module { id: string; title: string; order: number; lessons: Lesson[]; }
 interface Student { id: string; firstName: string; lastName: string; email: string; organization: string | null; country: string | null; progress: number; status: string; enrolledAt: string; lastAccessAt: string | null; }
 interface Assessment { id: string; title: string; type: string; dueDate: string | null; maxScore: number; submissions: number; totalStudents: number; avgScore: number | null; pendingCount: number; }
+interface Facilitator { id: string; name: string; title: string | null; bio: string | null; email: string | null; phone: string | null; linkedIn: string | null; photo: string | null; order: number; }
 interface CourseDetail {
   id: string; title: string; subtitle: string; category: string; level: string; duration: string; published: boolean; price: number;
   zoomLink: string | null; timetable: string | null;
-  modules: Module[]; students: Student[]; assessments: Assessment[];
+  modules: Module[]; students: Student[]; assessments: Assessment[]; facilitators: Facilitator[];
 }
 
 export default function InstructorCourseManagePage() {
@@ -19,8 +20,20 @@ export default function InstructorCourseManagePage() {
   const navigate = useNavigate();
   const { data: course, isLoading, refetch } = useApi<CourseDetail>("/instructor/courses/" + courseId);
 
-  const [activeTab, setActiveTab] = useState<"overview" | "content" | "students" | "assessments">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "content" | "students" | "assessments" | "facilitators">("overview");
   const [expandedModule, setExpandedModule] = useState<number | null>(0);
+
+  // Facilitator editing
+  const [editingFacilitator, setEditingFacilitator] = useState<Facilitator | "new" | null>(null);
+  const [facName, setFacName] = useState("");
+  const [facTitle, setFacTitle] = useState("");
+  const [facBio, setFacBio] = useState("");
+  const [facEmail, setFacEmail] = useState("");
+  const [facPhone, setFacPhone] = useState("");
+  const [facLinkedIn, setFacLinkedIn] = useState("");
+  const [facPhoto, setFacPhoto] = useState("");
+  const [savingFacilitator, setSavingFacilitator] = useState(false);
+  const [deletingFacilitatorId, setDeletingFacilitatorId] = useState<string | null>(null);
 
   // Content editing
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
@@ -74,6 +87,46 @@ export default function InstructorCourseManagePage() {
     finally { setCreatingAssessment(false); }
   };
 
+  const openFacilitatorModal = (facilitator: Facilitator | "new") => {
+    setFormError("");
+    setEditingFacilitator(facilitator);
+    if (facilitator === "new") {
+      setFacName(""); setFacTitle(""); setFacBio(""); setFacEmail(""); setFacPhone(""); setFacLinkedIn(""); setFacPhoto("");
+    } else {
+      setFacName(facilitator.name); setFacTitle(facilitator.title || ""); setFacBio(facilitator.bio || "");
+      setFacEmail(facilitator.email || ""); setFacPhone(facilitator.phone || ""); setFacLinkedIn(facilitator.linkedIn || ""); setFacPhoto(facilitator.photo || "");
+    }
+  };
+
+  const handleSaveFacilitator = async () => {
+    if (!editingFacilitator) return;
+    setFormError("");
+    if (!facName.trim()) { setFormError("Name is required"); return; }
+    setSavingFacilitator(true);
+    const data = { name: facName.trim(), title: facTitle.trim(), bio: facBio.trim(), email: facEmail.trim(), phone: facPhone.trim(), linkedIn: facLinkedIn.trim(), photo: facPhoto.trim() };
+    try {
+      if (editingFacilitator === "new") {
+        await api.post("/instructor/courses/" + course.id + "/facilitators", data);
+      } else {
+        await api.patch("/instructor/facilitators/" + editingFacilitator.id, data);
+      }
+      setEditingFacilitator(null);
+      setSuccessMsg("Facilitator saved"); setTimeout(() => setSuccessMsg(""), 3000);
+      refetch();
+    } catch (err) { setFormError(err instanceof Error ? err.message : "Failed to save"); }
+    finally { setSavingFacilitator(false); }
+  };
+
+  const handleDeleteFacilitator = async (id: string) => {
+    setDeletingFacilitatorId(id);
+    try {
+      await api.delete("/instructor/facilitators/" + id);
+      setSuccessMsg("Facilitator removed"); setTimeout(() => setSuccessMsg(""), 3000);
+      refetch();
+    } catch (err) { setFormError(err instanceof Error ? err.message : "Failed to remove"); }
+    finally { setDeletingFacilitatorId(null); }
+  };
+
   const getContentIcon = (type: string | null) => {
     if (type === "video") return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-purple-500"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>;
     if (type === "document") return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-red-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>;
@@ -105,10 +158,11 @@ export default function InstructorCourseManagePage() {
       {/* Tabs */}
       <div className="bg-white border border-gray-200 rounded-lg">
         <div className="flex border-b border-gray-200">
-          {(["overview", "content", "students", "assessments"] as const).map(tab => (
+          {(["overview", "content", "facilitators", "students", "assessments"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3.5 text-[14px] font-medium capitalize transition-colors cursor-pointer ${activeTab === tab ? "text-brand-teal border-b-2 border-brand-teal" : "text-gray-500 hover:text-gray-700"}`}>
               {tab} {tab === "students" && <span className="text-[11px] ml-1 text-gray-400">({course.students.length})</span>}
               {tab === "assessments" && <span className="text-[11px] ml-1 text-gray-400">({course.assessments.length})</span>}
+              {tab === "facilitators" && <span className="text-[11px] ml-1 text-gray-400">({course.facilitators.length})</span>}
             </button>
           ))}
         </div>
@@ -211,6 +265,44 @@ export default function InstructorCourseManagePage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ─── Facilitators Tab ─── */}
+          {activeTab === "facilitators" && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-[15px] font-semibold text-gray-800">Course Facilitators</h2>
+                <button onClick={() => openFacilitatorModal("new")} className="bg-[#1a2332] text-white rounded-md px-4 py-2 text-[13px] font-medium cursor-pointer hover:bg-[#243044] transition-colors">Add Facilitator</button>
+              </div>
+              {course.facilitators.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {course.facilitators.map(f => (
+                    <div key={f.id} className="border border-gray-100 rounded-md px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {f.photo ? (
+                          <img src={f.photo} alt={f.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-[12px] font-semibold text-gray-600 shrink-0">{f.name.split(" ").filter(n => n.length > 1 && !n.includes("(")).map(n => n[0]).join("").slice(0, 2)}</div>
+                        )}
+                        <div>
+                          <div className="text-[13.5px] font-medium text-gray-800">{f.name}</div>
+                          <div className="text-[12px] text-gray-500">{f.title || "—"}{f.email ? " · " + f.email : ""}</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => openFacilitatorModal(f)} className="border border-gray-200 rounded-md px-3 py-1.5 text-[12px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Edit</button>
+                        <button onClick={() => handleDeleteFacilitator(f.id)} disabled={deletingFacilitatorId === f.id} className="border border-gray-200 rounded-md px-3 py-1.5 text-[12px] font-medium text-red-600 cursor-pointer hover:bg-red-50 transition-colors">{deletingFacilitatorId === f.id ? "Removing..." : "Remove"}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-10 text-center">
+                  <p className="text-[13px] text-gray-400 mb-3">No facilitators added yet.</p>
+                  <button onClick={() => openFacilitatorModal("new")} className="bg-[#1a2332] text-white rounded-md px-5 py-2 text-[13px] font-medium cursor-pointer">Add First Facilitator</button>
+                </div>
+              )}
             </div>
           )}
 
@@ -320,6 +412,29 @@ export default function InstructorCourseManagePage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setEditingLesson(null)} className="flex-1 border border-gray-200 rounded-md py-2 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
                 <button onClick={handleSaveContent} disabled={savingContent} className="flex-1 bg-[#1a2332] text-white rounded-md py-2 text-[13px] font-medium cursor-pointer hover:bg-[#243044] transition-colors">{savingContent ? "Saving..." : "Save"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Facilitator Modal */}
+      {editingFacilitator && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] overflow-y-auto py-8" onClick={() => setEditingFacilitator(null)}>
+          <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <h2 className="text-[18px] font-semibold text-gray-800 mb-5">{editingFacilitator === "new" ? "Add Facilitator" : "Edit Facilitator"}</h2>
+            {formError && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4"><p className="text-[13px] text-red-700">{formError}</p></div>}
+            <div className="flex flex-col gap-3.5">
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Name</label><input type="text" value={facName} onChange={e => setFacName(e.target.value)} placeholder="e.g. Dr. Jane Doe" className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Title</label><input type="text" value={facTitle} onChange={e => setFacTitle(e.target.value)} placeholder="e.g. Lead Facilitator" className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Bio</label><textarea value={facBio} onChange={e => setFacBio(e.target.value)} rows={4} placeholder="Short biography" className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors resize-none" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Email</label><input type="email" value={facEmail} onChange={e => setFacEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Phone</label><input type="text" value={facPhone} onChange={e => setFacPhone(e.target.value)} placeholder="+233..." className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">LinkedIn URL</label><input type="text" value={facLinkedIn} onChange={e => setFacLinkedIn(e.target.value)} placeholder="https://linkedin.com/in/..." className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-700 mb-1">Photo URL</label><input type="text" value={facPhoto} onChange={e => setFacPhoto(e.target.value)} placeholder="https://..." className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-[14px] text-gray-800 outline-none focus:border-brand-teal transition-colors" /></div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditingFacilitator(null)} className="flex-1 border border-gray-200 rounded-md py-2 text-[13px] font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors">Cancel</button>
+                <button onClick={handleSaveFacilitator} disabled={savingFacilitator} className="flex-1 bg-[#1a2332] text-white rounded-md py-2 text-[13px] font-medium cursor-pointer hover:bg-[#243044] transition-colors">{savingFacilitator ? "Saving..." : "Save"}</button>
               </div>
             </div>
           </div>
