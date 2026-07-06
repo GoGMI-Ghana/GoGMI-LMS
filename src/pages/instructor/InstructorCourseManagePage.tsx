@@ -162,7 +162,7 @@ export default function InstructorCourseManagePage() {
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3.5 text-[14px] font-medium capitalize transition-colors cursor-pointer ${activeTab === tab ? "text-brand-teal border-b-2 border-brand-teal" : "text-gray-500 hover:text-gray-700"}`}>
               {tab} {tab === "students" && <span className="text-[11px] ml-1 text-gray-400">({course.students.length})</span>}
               {tab === "assessments" && <span className="text-[11px] ml-1 text-gray-400">({course.assessments.length})</span>}
-              {tab === "facilitators" && <span className="text-[11px] ml-1 text-gray-400">({course.facilitators.length})</span>}
+              {tab === "facilitators" && <span className="text-[11px] ml-1 text-gray-400">({(course.facilitators || []).length})</span>}
             </button>
           ))}
         </div>
@@ -275,9 +275,9 @@ export default function InstructorCourseManagePage() {
                 <h2 className="text-[15px] font-semibold text-gray-800">Course Facilitators</h2>
                 <button onClick={() => openFacilitatorModal("new")} className="bg-[#1a2332] text-white rounded-md px-4 py-2 text-[13px] font-medium cursor-pointer hover:bg-[#243044] transition-colors">Add Facilitator</button>
               </div>
-              {course.facilitators.length > 0 ? (
+              {(course.facilitators || []).length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {course.facilitators.map(f => (
+                  {(course.facilitators || []).map(f => (
                     <div key={f.id} className="border border-gray-100 rounded-md px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {f.photo ? (
