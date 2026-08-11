@@ -4,27 +4,100 @@ import { LoadingSpinner } from "../../components/common";
 
 interface Eval { id: string; student: string; email: string; course: string; responses: Record<string,string>; submittedAt: string; }
 
+const RATING_LABELS: Record<string,string> = {
+  b1:"Overall programme",b2:"Content relevance",b3:"Structure & flow",
+  mod1:"Module 1 — Foundations",mod2:"Module 2 — SWOT",mod3:"Module 3 — Strategy Dev",mod4:"Module 4 — Stakeholder",mod5:"Module 5 — Developing Strategy",mod6:"Module 6 — Implementation",mod7:"Module 7 — Case Study",mod8:"Module 8 — Capstone",
+  e1:"Case study effectiveness",e2:"Scenario realism",h1:"Confidence in strategy dev",
+  f_zoom:"Zoom quality",f_lms:"LMS platform",f_coord:"Coordination",f_collab:"Collab tools",f_time:"Communications timeliness",
+  g_clarity:"Assignment clarity",g_rel:"Assignment relevance",g_feed:"Feedback usefulness",g_coa:"COA template",g_fair:"Assessment fairness",
+};
+
+const FAC_LABELS: Record<string,string> = {
+  f1:"Dr. Alberta Ama Sagoe",f2:"Cdr. Kofi Duodu",f3:"Dr. Ian Ralby",f4:"AVM Frank Hanson",f5:"Phillip Heyl",f6:"Capt. Yirenkyi",f7:"Dr. Osei Bonsu",f8:"Col. William Ohemeng",f9:"Stephanie Schandorf",f10:"Cdre. James Kontoh",
+};
+
+const RADIO_FIELDS: [string, string][] = [["b4","Recommend programme"],["e3","Case study progression"],["f2","Schedule communication"],["g2","Workload"],["h2","Most valuable module"]];
+const WRITTEN_FIELDS: [string, string][] = [["e4","Case study improvements"],["f3","Virtual delivery issues"],["h3","Module needing depth"],["h4","Key takeaway"],["h5","Future topics"],["i1","Enjoyed most"],["i2","Biggest gap"],["i3","Other comments"]];
+
+function buildExportRows(evals: Eval[]): Record<string, string>[] {
+  return evals.map(e => {
+    const row: Record<string, string> = {
+      "Student": e.student,
+      "Email": e.email,
+      "Course": e.course,
+      "Submitted At": new Date(e.submittedAt).toLocaleString("en-GB"),
+      "Country/Org": e.responses.a1 || "",
+      "Background": e.responses.a2 || "",
+    };
+    Object.entries(RATING_LABELS).forEach(([k, label]) => { row[label] = e.responses[k] || ""; });
+    Object.entries(FAC_LABELS).forEach(([k, name]) => {
+      row[name + " — Knowledge"] = e.responses[k + "_k"] || "";
+      row[name + " — Clarity"] = e.responses[k + "_c"] || "";
+      row[name + " — Engagement"] = e.responses[k + "_e"] || "";
+    });
+    RADIO_FIELDS.forEach(([k, label]) => { row[label] = e.responses[k] || ""; });
+    WRITTEN_FIELDS.forEach(([k, label]) => { row[label] = e.responses[k] || ""; });
+    return row;
+  });
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportCsv(evals: Eval[]) {
+  const rows = buildExportRows(evals);
+  if (rows.length === 0) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (v: string) => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
+  const lines = [headers.map(escape).join(","), ...rows.map(r => headers.map(h => escape(r[h])).join(","))];
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  downloadBlob(blob, `course-evaluations-${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+function exportExcel(evals: Eval[]) {
+  const rows = buildExportRows(evals);
+  if (rows.length === 0) return;
+  const headers = Object.keys(rows[0]);
+  const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  const cell = (v: string) => `<Cell><Data ss:Type="String">${esc(v)}</Data></Cell>`;
+  const headerRow = `<Row>${headers.map(cell).join("")}</Row>`;
+  const dataRows = rows.map(r => `<Row>${headers.map(h => cell(r[h])).join("")}</Row>`).join("");
+  const xml = `<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n<Worksheet ss:Name="Evaluations"><Table>${headerRow}${dataRows}</Table></Worksheet>\n</Workbook>`;
+  const blob = new Blob([xml], { type: "application/vnd.ms-excel" });
+  downloadBlob(blob, `course-evaluations-${new Date().toISOString().slice(0, 10)}.xls`);
+}
+
 export default function AdminReportsPage() {
   const { data: evals, isLoading } = useApi<Eval[]>("/admin/evaluations");
   const [viewing, setViewing] = useState<Eval | null>(null);
 
   if (isLoading) return <LoadingSpinner />;
 
-  const ratingLabels: Record<string,string> = {
-    b1:"Overall programme",b2:"Content relevance",b3:"Structure & flow",
-    mod1:"Module 1 — Foundations",mod2:"Module 2 — SWOT",mod3:"Module 3 — Strategy Dev",mod4:"Module 4 — Stakeholder",mod5:"Module 5 — Developing Strategy",mod6:"Module 6 — Implementation",mod7:"Module 7 — Case Study",mod8:"Module 8 — Capstone",
-    e1:"Case study effectiveness",e2:"Scenario realism",h1:"Confidence in strategy dev",
-    f_zoom:"Zoom quality",f_lms:"LMS platform",f_coord:"Coordination",f_collab:"Collab tools",f_time:"Communications timeliness",
-    g_clarity:"Assignment clarity",g_rel:"Assignment relevance",g_feed:"Feedback usefulness",g_coa:"COA template",g_fair:"Assessment fairness",
-  };
-
-  const facLabels: Record<string,string> = {
-    f1:"Dr. Alberta Ama Sagoe",f2:"Cdr. Kofi Duodu",f3:"Dr. Ian Ralby",f4:"AVM Frank Hanson",f5:"Phillip Heyl",f6:"Capt. Yirenkyi",f7:"Dr. Osei Bonsu",f8:"Col. William Ohemeng",f9:"Stephanie Schandorf",f10:"Cdre. James Kontoh",
-  };
+  const ratingLabels = RATING_LABELS;
+  const facLabels = FAC_LABELS;
 
   return (
     <div>
-      <div className="mb-7"><h1 className="text-[22px] font-semibold text-gray-800 mb-1">Course Evaluations</h1><p className="text-[14px] text-gray-500">{(evals||[]).length} evaluation{(evals||[]).length!==1?"s":""} submitted.</p></div>
+      <div className="mb-7 flex items-start justify-between">
+        <div>
+          <h1 className="text-[22px] font-semibold text-gray-800 mb-1">Course Evaluations</h1>
+          <p className="text-[14px] text-gray-500">{(evals||[]).length} evaluation{(evals||[]).length!==1?"s":""} submitted.</p>
+        </div>
+        {(evals||[]).length > 0 && (
+          <div className="flex gap-2">
+            <button onClick={() => exportCsv(evals!)} className="border border-gray-200 rounded-md px-3.5 py-2 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">Export CSV</button>
+            <button onClick={() => exportExcel(evals!)} className="border border-gray-200 rounded-md px-3.5 py-2 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">Export Excel</button>
+          </div>
+        )}
+      </div>
 
       {(evals||[]).length > 0 ? (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
